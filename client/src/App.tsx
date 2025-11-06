@@ -1,24 +1,26 @@
+// client/src/App.tsx
+
 import { useEffect } from "react";
 import { Switch, Route, Redirect, useLocation, Link } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-// Local QueryClient so we’re not blocked by project-specific imports
+// Use a local QueryClient first; we can swap to "@/lib/queryClient" later if you prefer.
 const queryClient = new QueryClient();
 
-// Minimal shadcn wrappers you added earlier
+// These UI components must exist at client/src/components/ui/{tooltip,toaster}.tsx
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 
-// Hooks (must exist with these names/exports)
+// Hooks (ensure they export { user, isLoading } and { data, isLoading })
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 
-// Pages — NOTE the corrected path for ProfileOnboarding:
+// Pages (CAUTION: match exact casing & paths)
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Today from "@/pages/today";
-// 🔧 FIX: the file in your repo is client/src/pages/profile.tsx
-import ProfileOnboarding from "@/pages/profile";
+// ⬇⬇⬇ FIXED: match your file name exactly (ProfileOnboarding.tsx)
+import ProfileOnboarding from "@/pages/onboarding/ProfileOnboarding";
 import AuthCallback from "@/auth/AuthCallback";
 import NotFound from "@/pages/not-found";
 
@@ -71,7 +73,7 @@ export default function App() {
           <Route component={NotFound} />
         </Switch>
 
-        {/* quick debug nav; remove when done */}
+        {/* tiny debug nav; remove when done */}
         <div style={{ position: "fixed", bottom: 12, left: 12, fontSize: 12 }}>
           <Link href="/">Home</Link> · <Link href="/today">Today</Link> ·{" "}
           <Link href="/app">App</Link>
