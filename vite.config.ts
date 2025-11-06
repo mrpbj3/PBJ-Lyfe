@@ -3,15 +3,16 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 
 export default defineConfig({
-  root: "client",                       // <— Vite will look for client/index.html
+  root: "client",
+  base: "/",
   plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "client/src"),
-    },
+      "@": path.resolve(__dirname, "client/src")
+    }
   },
   build: {
-    outDir: "../dist",                  // outputs to repo/dist
-    emptyOutDir: true,
-  },
+    outDir: "../dist",
+    emptyOutDir: true
+  }
 });
