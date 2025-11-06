@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile"; // added below
-
+import { AuthProviders } from "@/auth/AuthProviders";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Today from "@/pages/today";
