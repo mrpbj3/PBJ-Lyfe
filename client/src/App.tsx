@@ -47,26 +47,10 @@ function DecisionGate() {
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Switch>
-          {/* public */}
-          <Route path="/" component={Landing} />
-          <Route path="/login" component={Login} />
-          <Route path="/auth/callback" component={AuthCallback} />
-
-          {/* decision route after any login */}
-          <Route path="/app" component={DecisionGate} />
-
-          {/* protected */}
-          <Route path="/today" component={Today} />
-          <Route path="/onboarding/profile" component={ProfileOnboarding} />
-
-          {/* 404 */}
-          <Route component={NotFound} />
-        </Switch>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <div style={{ padding: 24, fontFamily: "system-ui" }}>
+      <h1>PBJ Lyfe — Mount OK</h1>
+      <p>If you see this, React mounted and routing/providers are the issue.</p>
+    </div>
   );
 }
+
