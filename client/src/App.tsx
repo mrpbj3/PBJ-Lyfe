@@ -3,7 +3,7 @@ import { Switch, Route, Redirect, Link } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
-import ProfileOnboarding from "@/pages/profile/onboarding";
+import ProfileOnboarding from "@/pages/onboarding/ProfileOnboarding";
 
 const queryClient = new QueryClient();
 
