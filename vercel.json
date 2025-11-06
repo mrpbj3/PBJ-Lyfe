@@ -3,7 +3,6 @@
     { "source": "/api/login",  "destination": "/login" },
     { "source": "/api/logout", "destination": "/login" },
 
-    // SPA fallback (lets deep links like /today, /profile load index.html)
     { "source": "/(.*)", "destination": "/" }
   ]
 }
