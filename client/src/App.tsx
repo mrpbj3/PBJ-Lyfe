@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile"; // added below
 
 import Landing from "@/pages/landing";
-import Login from "@/pages/Login";
+import Login from "@/pages/login";
 import Today from "@/pages/today";
 import ProfileOnboarding from "@/pages/onboarding/ProfileOnboarding";
 import AuthCallback from "@/auth/AuthCallback";
