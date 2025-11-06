@@ -1,35 +1,29 @@
-// client/src/App.tsx
-
 import { useEffect } from "react";
 import { Switch, Route, Redirect, useLocation, Link } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-// If you prefer your shared instance later, swap this for:
-// import { queryClient } from "@/lib/queryClient";
+// Use a local QueryClient first (we can swap to "@/lib/queryClient" later)
 const queryClient = new QueryClient();
 
-// UI providers (ensure these paths/casing match your files under client/src/components/ui/)
+// These files now exist (see sections 6 & 7 below)
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 
-// Auth/profile hooks (ensure these export { user, isLoading } and { data, isLoading })
+// Hooks/pages — make sure the filenames/casing match your tree
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-
-// Pages (ensure filenames/case match exactly under client/src/pages/** and client/src/auth/**)
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Today from "@/pages/today";
-import ProfileOnboarding from "@/pages/onboarding/ProfileOnboarding";
+import ProfileOnboarding from "@/pages/onboarding/profile";
 import AuthCallback from "@/auth/AuthCallback";
 import NotFound from "@/pages/not-found";
 
 function DecisionGate() {
   const { user, isLoading } = useAuth();
   const { data: profile, isLoading: pLoading } = useProfile();
-  const [, navigate] = useLocation(); // <-- make sure this import exists above
+  const [, navigate] = useLocation();
 
-  // Loading gate
   if (isLoading || pLoading) {
     return (
       <div className="min-h-screen grid place-items-center text-muted-foreground">
@@ -38,10 +32,9 @@ function DecisionGate() {
     );
   }
 
-  // Public redirect is safe to render
   if (!user) return <Redirect to="/" />;
 
-  // All imperative navigation in an effect (NOT during render)
+  // Do not navigate during render; use an effect
   useEffect(() => {
     if (!profile || !profile.is_onboarding_complete) {
       navigate("/onboarding/profile", { replace: true });
