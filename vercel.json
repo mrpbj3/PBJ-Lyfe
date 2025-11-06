@@ -1,8 +1,13 @@
 {
   "rewrites": [
-    { "source": "/api/login",  "destination": "/login" },
-    { "source": "/api/logout", "destination": "/login" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
-    { "source": "/(.*)", "destination": "/" }
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    }
   ]
 }
