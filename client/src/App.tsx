@@ -29,6 +29,8 @@ import NotFound from "@/pages/not-found";
 // auth pages you added in /auth
 import Login from "@/pages/login";
 import AuthCallback from "@/auth/AuthCallback";
+import Today from "@/pages/today";
+import ProfileSetup from "@/pages/profile-setup";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
