@@ -3,6 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Activity, TrendingDown, Moon, Dumbbell, Zap, Brain, Heart } from 'lucide-react';
 import { Link } from 'wouter';
 
+const [, navigate] = useLocation();
+<button onClick={() => navigate("/login")}>Get Started</button>
+
 export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
