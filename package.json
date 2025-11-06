@@ -3,6 +3,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:client": "vite build",
+    "build:client": "vite build --config vite.config.ts"
     "preview": "vite preview --port 4173"
   },
   "devDependencies": {
