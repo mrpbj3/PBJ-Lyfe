@@ -2,7 +2,7 @@
   "rewrites": [
     { "source": "/api/login",  "destination": "/login" },
     { "source": "/api/logout", "destination": "/login" },
-
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
     { "source": "/(.*)", "destination": "/" }
   ]
 }
