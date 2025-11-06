@@ -1,53 +1,51 @@
-import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+// client/src/auth/AuthCallback.tsx
+import { useEffect } from "react";
+import { useLocation } from "wouter";
+import { supabase } from "@/lib/supabaseClient";
 
-export default function Login() {
-  const [email, setEmail] = useState('');
-  const [pw, setPw] = useState('');
-  const [msg, setMsg] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+export default function AuthCallback() {
+  const [, navigate] = useLocation();
 
-  const sendMagicLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true); setMsg(null);
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` }
-    });
-    setLoading(false);
-    setMsg(error ? error.message : 'Magic link sent. Check your email.');
-  };
+  useEffect(() => {
+    (async () => {
+      // Finish the auth exchange for email links / OAuth
+      const { error } = await supabase.auth.exchangeCodeForSession();
+      if (error) {
+        // Send them back to login with an error state in the hash
+        navigate(`/#error=${encodeURIComponent(error.message)}`, { replace: true });
+        return;
+      }
 
-  const signInWithPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true); setMsg(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
-    setLoading(false);
-    setMsg(error ? error.message : 'Signed in!');
-    if (!error) window.location.href = '/app';
-  };
+      // After we have a session, check if the user has a profile row
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id, first_name")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      // If no profile yet, go to the onboarding/profile-setup page
+      if (!profile) {
+        navigate("/profile/setup", { replace: true });
+        return;
+      }
+
+      // Otherwise, go to dashboard (Today)
+      navigate("/", { replace: true });
+    })();
+  }, [navigate]);
 
   return (
-    <div className="mx-auto max-w-md p-6">
-      <h1 className="text-2xl font-semibold mb-4">Sign in</h1>
-
-      <form onSubmit={sendMagicLink} className="space-y-3">
-        <input className="w-full border p-2 rounded" type="email" placeholder="you@email.com"
-               value={email} onChange={e => setEmail(e.target.value)} required />
-        <button className="w-full border p-2 rounded" disabled={loading}>Send Magic Link</button>
-      </form>
-
-      <div className="my-6 text-center text-sm opacity-60">or</div>
-
-      <form onSubmit={signInWithPassword} className="space-y-3">
-        <input className="w-full border p-2 rounded" type="email" placeholder="email"
-               value={email} onChange={e => setEmail(e.target.value)} />
-        <input className="w-full border p-2 rounded" type="password" placeholder="password"
-               value={pw} onChange={e => setPw(e.target.value)} />
-        <button className="w-full border p-2 rounded" disabled={loading}>Sign in with password</button>
-      </form>
-
-      {msg && <p className="mt-4 text-sm">{msg}</p>}
+    <div className="min-h-screen flex items-center justify-center text-muted-foreground">
+      Finishing sign-in…
     </div>
   );
 }
