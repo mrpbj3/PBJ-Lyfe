@@ -1,33 +1,22 @@
-import { useToast } from "@/hooks/use-toast"
-import {
-  Toast,
-  ToastClose,
-  ToastDescription,
-  ToastProvider,
-  ToastTitle,
-  ToastViewport,
-} from "@/components/ui/toast"
+"use client";
+
+import * as React from "react";
+import * as Toast from "@radix-ui/react-toast";
 
 export function Toaster() {
-  const { toasts } = useToast()
-
   return (
-    <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
-        return (
-          <Toast key={id} {...props}>
-            <div className="grid gap-1">
-              {title && <ToastTitle>{title}</ToastTitle>}
-              {description && (
-                <ToastDescription>{description}</ToastDescription>
-              )}
-            </div>
-            {action}
-            <ToastClose />
-          </Toast>
-        )
-      })}
-      <ToastViewport />
-    </ToastProvider>
-  )
+    <Toast.Provider swipeDirection="right">
+      {/* You can add <Toast.Root> instances via your own use-toast hook later */}
+      <Toast.Viewport
+        style={{
+          position: "fixed",
+          bottom: 16,
+          right: 16,
+          width: 360,
+          maxWidth: "100vw",
+          zIndex: 9999
+        }}
+      />
+    </Toast.Provider>
+  );
 }
