@@ -45,11 +45,21 @@ function DecisionGate() {
   return null;
 }
 
+import { Switch, Route, Link } from "wouter";
+
 export default function App() {
   return (
     <div style={{ padding: 24, fontFamily: "system-ui" }}>
-      <h1>PBJ Lyfe — Mount OK</h1>
-      <p>If you see this, React mounted and routing/providers are the issue.</p>
+      <h1>Routes smoke test</h1>
+      <nav style={{ display: "grid", gap: 8 }}>
+        <Link href="/">Home</Link>
+        <Link href="/today">Today</Link>
+      </nav>
+      <Switch>
+        <Route path="/">Home</Route>
+        <Route path="/today">Today</Route>
+        <Route>404</Route>
+      </Switch>
     </div>
   );
 }
