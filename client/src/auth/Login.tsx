@@ -1,53 +1,138 @@
-import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+// client/src/pages/Login.tsx
+import { useState } from "react";
+import { useLocation } from "wouter";
+import { supabase } from "@/lib/supabaseClient";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
+// Helper – production site URL (set VITE_SITE_URL in Vercel)
+const SITE_URL = import.meta.env.VITE_SITE_URL || window.location.origin;
+const CALLBACK_URL = `${SITE_URL}/auth/callback`;
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [pw, setPw] = useState('');
-  const [msg, setMsg] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [, navigate] = useLocation();
+  const [tab, setTab] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [sending, setSending] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
-  const sendMagicLink = async (e: React.FormEvent) => {
+  async function handlePasswordSignIn(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true); setMsg(null);
+    setSending(true);
+    setMessage(null);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setSending(false);
+    if (error) return setMessage(error.message);
+
+    // After password sign-in we already have a session; do the same profile check
+    // The callback page does this too, but this avoids a round-trip.
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return navigate("/login");
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    navigate(profile ? "/" : "/profile/setup");
+  }
+
+  async function handleMagicLink() {
+    setSending(true);
+    setMessage(null);
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` }
+      options: { emailRedirectTo: CALLBACK_URL },
     });
-    setLoading(false);
-    setMsg(error ? error.message : 'Magic link sent. Check your email.');
-  };
+    setSending(false);
+    if (error) setMessage(error.message);
+    else setMessage("Check your inbox for a secure sign-in link.");
+  }
 
-  const signInWithPassword = async (e: React.FormEvent) => {
+  async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true); setMsg(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
-    setLoading(false);
-    if (error) setMsg(error.message);
-    else window.location.href = '/today';
-  };
+    setSending(true);
+    setMessage(null);
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: CALLBACK_URL },
+    });
+    setSending(false);
+    if (error) setMessage(error.message);
+    else setMessage("We sent you a confirmation email. Please confirm to continue.");
+  }
 
   return (
-    <div className="mx-auto max-w-md p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Sign in</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-50 to-white p-6">
+      <div className="w-full max-w-md rounded-2xl shadow-xl bg-white/90 border">
+        <div className="p-6 text-center">
+          <div className="text-3xl font-extrabold">
+            <span className="text-[#AB13E6]">PBJ</span>{" "}
+            <span className="text-[#C38452]">LYFE</span>
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            One simple daily flow to track your Lyfe.
+          </p>
+        </div>
 
-      <form onSubmit={sendMagicLink} className="space-y-3">
-        <input className="w-full border p-2 rounded" type="email" placeholder="you@email.com"
-               value={email} onChange={e => setEmail(e.target.value)} required />
-        <button className="w-full border p-2 rounded" disabled={loading}>Send magic link</button>
-      </form>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="px-6 pb-6">
+          <TabsList className="grid grid-cols-2 w-full">
+            <TabsTrigger value="signin">Sign in</TabsTrigger>
+            <TabsTrigger value="signup">Create account</TabsTrigger>
+          </TabsList>
 
-      <div className="my-6 text-center text-sm opacity-60">or</div>
+          <TabsContent value="signin" className="mt-6">
+            <form onSubmit={handlePasswordSignIn} className="space-y-3">
+              <label className="text-sm font-medium">Email</label>
+              <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" />
 
-      <form onSubmit={signInWithPassword} className="space-y-3">
-        <input className="w-full border p-2 rounded" type="email" placeholder="email"
-               value={email} onChange={e => setEmail(e.target.value)} />
-        <input className="w-full border p-2 rounded" type="password" placeholder="password"
-               value={pw} onChange={e => setPw(e.target.value)} />
-        <button className="w-full border p-2 rounded" disabled={loading}>Sign in with password</button>
-      </form>
+              <label className="text-sm font-medium">Password</label>
+              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
 
-      {msg && <p className="text-sm mt-3">{msg}</p>}
+              <Button className="w-full bg-[#AB13E6]" disabled={sending} type="submit">
+                {sending ? "Signing in…" : "Sign in"}
+              </Button>
+
+              <Button variant="outline" className="w-full border-[#C38452] text-[#C38452]"
+                type="button" disabled={sending} onClick={handleMagicLink}>
+                Send me a magic link
+              </Button>
+
+              {message && <p className="text-sm text-destructive mt-2">{message}</p>}
+            </form>
+          </TabsContent>
+
+          <TabsContent value="signup" className="mt-6">
+            <form onSubmit={handleSignUp} className="space-y-3">
+              <label className="text-sm font-medium">Email</label>
+              <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" />
+
+              <label className="text-sm font-medium">Create a password</label>
+              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+
+              <Button className="w-full bg-[#AB13E6]" disabled={sending} type="submit">
+                {sending ? "Creating…" : "Create account"}
+              </Button>
+
+              {message && <p className="text-sm text-destructive mt-2">{message}</p>}
+            </form>
+          </TabsContent>
+        </Tabs>
+
+        <div className="px-6 pb-6 text-center text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full" style={{ background: "#C38452" }} />
+            Secure by Supabase Auth
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
