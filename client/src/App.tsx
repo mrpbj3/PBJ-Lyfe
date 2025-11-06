@@ -12,6 +12,18 @@ import ProfileOnboarding from "@/pages/onboarding/ProfileOnboarding";
 import NotFound from "@/pages/not-found";
 import AuthCallback from "@/auth/AuthCallback"; // if you have one for hash parsing
 
+import Login from "@/pages/Login";
+import AuthCallback from "@/auth/AuthCallback";
+// ...
+<Switch>
+  {/* public */}
+  <Route path="/" component={Landing} />
+  <Route path="/login" component={Login} />
+  <Route path="/auth/callback" component={AuthCallback} />
+  {/* ... other routes */}
+  <Route component={NotFound} />
+</Switch>
+
 function DecisionGate() {
   const { user, isLoading } = useAuth();
   const [, navigate] = useLocation();
