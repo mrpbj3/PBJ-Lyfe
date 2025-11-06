@@ -1,0 +1,11 @@
+node_modules
+.next
+dist
+build
+.cache
+.env
+.env.local
+*.log
+*.sqlite
+.replit
+*.replit
