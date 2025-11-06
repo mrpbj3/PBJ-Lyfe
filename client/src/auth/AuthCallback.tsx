@@ -1,20 +1,30 @@
-// client/src/auth/AuthCallback.tsx
 import { useEffect } from "react";
 import { useLocation } from "wouter";
+import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 
 export default function AuthCallback() {
   const [, navigate] = useLocation();
 
   useEffect(() => {
-    (async () => {
-      // Finish the auth exchange for email links / OAuth
-      const { error } = await supabase.auth.exchangeCodeForSession();
-      if (error) {
-        // Send them back to login with an error state in the hash
-        navigate(`/#error=${encodeURIComponent(error.message)}`, { replace: true });
-        return;
+    // Supabase handles the hash in the URL and sets the session
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error || !data.session) {
+        toast({ title: "Sign-in link invalid or expired." });
+        navigate("/login");
+      } else {
+        navigate("/app");
       }
+    });
+  }, [navigate]);
+
+  return (
+    <div className="min-h-screen grid place-items-center text-muted-foreground">
+      Finishing sign-in…
+    </div>
+  );
+}
+
 
       // After we have a session, check if the user has a profile row
       const {
