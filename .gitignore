@@ -9,3 +9,5 @@ build
 *.sqlite
 .replit
 *.replit
+repl_state.bin
+rapid_build_success
