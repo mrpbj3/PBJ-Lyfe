@@ -27,7 +27,7 @@ import Profile from "@/pages/profile";
 import NotFound from "@/pages/not-found";
 
 // auth pages you added in /auth
-import Login from "@/auth/Login";
+import Login from "@/pages/Login";
 import AuthCallback from "@/auth/AuthCallback";
 
 function Router() {
