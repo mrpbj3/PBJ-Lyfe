@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -19,6 +20,7 @@ function DecisionGate() {
   const { data: profile, isLoading: pLoading } = useProfile();
   const [, navigate] = useLocation();
 
+  // Show a loading state while auth/profile are resolving
   if (isLoading || pLoading) {
     return (
       <div className="min-h-screen grid place-items-center text-muted-foreground">
@@ -27,14 +29,19 @@ function DecisionGate() {
     );
   }
 
+  // Public redirect is safe to render
   if (!user) return <Redirect to="/" />;
 
-  if (!profile || !profile.is_onboarding_complete) {
-    navigate("/onboarding/profile");
-    return null;
-  }
+  // All imperative navigation happens in an effect (not during render)
+  useEffect(() => {
+    if (!profile || !profile.is_onboarding_complete) {
+      navigate("/onboarding/profile", { replace: true });
+    } else {
+      navigate("/today", { replace: true });
+    }
+  }, [profile, navigate]);
 
-  navigate("/today");
+  // Nothing to render; we immediately route in the effect
   return null;
 }
 
