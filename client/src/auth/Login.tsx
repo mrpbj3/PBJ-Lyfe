@@ -67,6 +67,16 @@ export default function Login() {
     setSending(false);
     if (error) setMessage(error.message);
     else setMessage("We sent you a confirmation email. Please confirm to continue.");
+
+async function onPasswordLogin(email: string, password: string) {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    toast({ title: "Login failed", description: error.message });
+  } else {
+    toast({ title: "Welcome back!" });
+    navigate("/app"); // <- important
+  }
+}
   }
 
   return (
