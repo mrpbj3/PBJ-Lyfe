@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
-import { toast } from "@/components/ui/use-toast"; // or your Toaster helper
+import { toast, useToast } from "@/hooks/use-toast"; // or your Toaster helper
 
 const PBJ_PURPLE = "#AB13E6";
 const PBJ_GOLD = "#C38452";
