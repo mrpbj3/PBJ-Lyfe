@@ -1,0 +1,658 @@
+# 🔧 Replit Agent Prompt — PBJ Health (Unified MVP + Streaks + Mental & Lyfe)
+
+## 0) Meta & Languages
+
+**Project Name:** PBJ Health
+**Interact with Replit Agent in:** English
+**App UI Language:** English (localization-ready)
+
+**Mission:** One simple daily flow to capture sleep, calories, weight/metrics, steps, workouts—and coach steady, sustainable fat loss, with mental health & lifestyle tracking.
+**North Star:** 4‑week **trend weight** decreasing while **adherence ≥ 80%**.
+**Primary KPIs:** Weekly Adherence, Avg Weekly Deficit (Intake − TDEE_est), Steps/day 7‑day avg vs goal, Sleep 7‑day avg & consistency, Strength trend (1RM proxy & tonnage).
+
+---
+
+## 1) Tech Stack & Project Structure
+
+**Client:** React Native (Expo, TypeScript)
+**State:** Zustand + React Query (server cache)
+**Navigation:** expo-router (Stack + Tabs)
+**Charts:** Victory Native
+**Forms & Validation:** React Hook Form + Zod
+**Backend:** Supabase (Postgres + Auth + RLS)
+**Background jobs:** Supabase Edge Functions + cron (weekly coach, plateau checks, daily analytics)
+**Health Bridges:** iOS HealthKit / Android Health Connect
+**Notifications:** expo-notifications (push + local)
+**Storage & Offline:** AsyncStorage + React Query cache; offline-first
+**Testing:** Jest + React Native Testing Library
+**Lint/Format:** ESLint, Prettier, TS strict
+
+**Repo layout:**
+
+```
+/app              (screens: Today, Sleep, WeighIn, Food, Workout, Trends, Integrations, Goals, Dreams, Meditation, Work, Social, Hobbies, Drugs, Lyfe)
+/components      (cards, charts, forms, list items, PR popups)
+/lib             (calcs, streaks, life, mental, bridges, notifications)
+/state           (Zustand slices: user, goals, diary, steps, workouts, mental, life)
+/server          (Edge functions: daily-analytics, weekly-coach, plateau, seeds)
+/sql             (schema.sql, policies.sql, views.sql, seeds.sql)
+/assets          (icons, exercise images)
+/scripts         (dev helpers)
+/docs            (MVP spec & roadmap)
+```
+
+**Secrets (.env):**
+
+```
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_ANON_KEY=
+EXPO_PUBLIC_APP_VERSION=0.1.0
+```
+
+---
+
+## 2) Screens & Daily Flow
+
+**Today (home):** cards: Sleep → Weigh‑in → Calories → Steps → Workout → Coach Tip → **Lyfe Row** (Mental, Work, Meditation, Social, Hobbies, Drugs).
+**Morning (1–2 min):** Log Sleep → Weigh‑In → Today Targets → **Mental (yesterday) + Dream prompt + Work & Stress + Meditation**.
+**Daytime:** Meals (quick‑add/macros); Steps sync; Workout logger; Meditation timer; Social/Hobby quick logs.
+**Evening (30–60s):** Daily review; Plan Tomorrow.
+
+**Additional Tabs:** Dreams (journal + AI analysis), Meditation (timers/history/streak), Work & Stress (logs/graphs), Social & Hobbies (time & streaks), Drugs & Recovery (warning, logging, clean‑days), Lyfe (Reports for Day/7/30/90 with charts).
+
+**UI Style:** minimalist, card‑first, large tap targets, dark/light, subtle badges; Duolingo‑style streak colors.
+
+---
+
+## 3) Integrations (MVP)
+
+* **Renpho Scale:** read via Apple Health / Health Connect (primary); manual entry fallback.
+* **VeryFit (steps/HR):** via OS health bridge; manual steps fallback.
+* **Nutrition:** manual calories/macros + favorites (simple DB later).
+
+**HealthBridge interface:**
+
+```ts
+export interface HealthBridge {
+  readTodaySteps(): Promise<number>;
+  readRangeSteps(start: Date, end: Date): Promise<Array<{date:string, steps:number}>>;
+  readLatestWeight(): Promise<{date:string, kg:number} | null>;
+  readBodyMetrics(date: Date): Promise<Partial<{ bodyFatPct:number, muscleKg:number, waterPct:number, visceralFat:number }>>;
+  requestPermissions(): Promise<void>;
+}
+```
+
+---
+
+## 4) Streaks (Duolingo‑style)
+
+**Big 3 checks (per local day):**
+
+* **Gym (G):** any workout time > 0 (show check‑in/out + duration).
+* **Calories (C):** intake ≤ goal (chip `intake/goal STATUS ±delta`).
+* **Sleep (S):** ≥ 6h (sum sessions that **end** that day).
+
+**Color:** 3/3 → **Green** ✅; 2/3 → **Yellow** 🟡; 1/3 or 0/3 → **Red** ❌.
+**Main Streaks:** (a) **Green‑only (3/3)**; (b) **On‑Track (≥2/3)**.
+**Section Streaks:** Gym, Sleep, Calories (Green/Red); plus **Meditation** and **Recovery (per drug)** streaks.
+
+**Exact chip formats:**
+
+* **Calories:** `2000/1700 OV +300` | `1500/1700 UN -200` | `1700/1700 GOAL 0`
+* **Sleep:** `6h45m ✅`
+* **Gym:** `✅ 1h12m (6:10–7:22)` or `❌`
+
+---
+
+## 5) Mental, Dreams, Work, Meditation, Social, Hobbies, Drugs
+
+**Morning Prompts:**
+
+1. **Mental (yesterday):** Great / OK / Bad + “Why?”
+2. **Dream Journal:** add entry; tags; emotion; intensity; **Analyze now?** (single/week; AI on demand).
+3. **Work:** Did you work? If Yes → start–end → duration + **Stress** (Low/Medium/High).
+4. **Meditation:** Did you meditate? If Yes → duration + feeling (Calm/Neutral/Restless). If No → “Start 5‑min timer?”
+5. **Social/Fun:** Did you have fun today? If Yes → activities + durations; If No → nudge (call a friend / primary hobby 30 min).
+
+**Drugs & Recovery:** setup tracked drugs (rx/recreational); toggle **In Recovery**; show warning banner; log use; **clean‑days** counter; optional withdrawal symptoms (if blank/none → “Great—that makes this easier.”; else suggest coping + motivation with AI). Milestone pings at 1/3/7/14/30/60/90 days clean.
+
+---
+
+## 6) Algorithms & Coaching Logic (TS)
+
+**BMR (Mifflin–St Jeor):** Male `10*kg + 6.25*cm − 5*age + 5`; Female `10*kg + 6.25*cm − 5*age − 161`.
+**TDEE (initial):** `BMR × activity_factor (1.2–1.6)`
+**Adaptive TDEE (V1.1):** `TDEE_est = AvgIntake + 3500 × (Δ trend‑weight / 7 days)`
+**Trend Weight:** EWMA λ=0.25 (fallback 7‑day MA).
+**1RM (Epley):** `w × (1 + reps/30)`; **Auto‑progression:** last‑set RIR ≤2 → +2.5–5 lb next time; RIR ≥4 → hold/reduce.
+**Green Day:** logged sleep + weigh‑in + calories + steps ≥ goal.
+**Plateau rule:** 14d ≤0.3% bw change & adherence ≥80% → +1–2k steps/day **or** −100–200 kcal/day; focus sleep ≥7h.
+**Recovery rule:** 3+ low‑sleep nights & poor performance → hold progression week.
+**Overreach:** loss >1%/wk (2+ wks) → +200 kcal or rest.
+
+**TypeScript modules to generate:**
+
+* `/lib/calcs/index.ts` (BMR, TDEE, EWMA, Epley, etc.)
+* `/lib/streaks/evaluator.ts` and `/lib/streaks/counters.ts` (full implementations below)
+* `/lib/mental/dreams.ts` (AI analysis stub)
+* `/lib/mental/meditation.ts` (5‑min timer)
+* `/lib/life/evaluators.ts` (work/social/hobby summaries)
+* `/lib/life/report.ts` (Lyfe Report generator)
+* `/lib/life/mr_pbj.ts` (coach text)
+
+**/lib/streaks/evaluator.ts**
+
+```ts
+import { DateTime } from 'luxon';
+
+type Tz = string;
+export type DailyInputs = {
+  tz: Tz;
+  dateISO: string;
+  kcalGoal: number;
+  meals: Array<{ calories: number }>;
+  sleepSessionsEndingToday: Array<{ startAt: string; endAt: string }>;
+  workouts: Array<{ startAt?: string; endAt?: string; durationMin?: number }>;
+};
+export type DailyResult = {
+  dateISO: string;
+  sleepMin: number; sleepOk: boolean;
+  kcalIntake: number; kcalGoal: number; kcalDelta: number; kcalStatus: 'UN'|'OV'|'GOAL'; kcalOk: boolean;
+  gymOk: boolean; gymStartAt?: string; gymEndAt?: string; gymDurationMin: number;
+  scoreSmall: 0|1|2|3; color: 'green'|'yellow'|'red';
+  caloriesChip: string; sleepChip: string; gymChip: string;
+};
+const fmtHM = (m:number)=>{const h=Math.floor(m/60),mm=m%60;return `${h}h${String(mm).padStart(2,'0')}m`;};
+export function evaluateDaily(inputs: DailyInputs): DailyResult {
+  const { tz, dateISO, kcalGoal } = inputs;
+  const kcalIntake = Math.max(0, Math.round(inputs.meals.reduce((s,m)=>s+(m.calories||0), 0)));
+  const kcalDelta = kcalIntake - kcalGoal;
+  let kcalStatus: 'UN'|'OV'|'GOAL' = kcalDelta<0?'UN':kcalDelta>0?'OV':'GOAL';
+  const kcalOk = kcalIntake <= kcalGoal;
+  const sleepMin = Math.round(inputs.sleepSessionsEndingToday.reduce((sum, s) => {
+    const start = DateTime.fromISO(s.startAt).setZone(tz);
+    const end   = DateTime.fromISO(s.endAt).setZone(tz);
+    return sum + Math.max(0, end.diff(start, 'minutes').minutes);
+  }, 0));
+  const sleepOk = sleepMin >= 360;
+  let gymDuration = 0; let firstStart: DateTime|undefined; let lastEnd: DateTime|undefined;
+  const dayStart = DateTime.fromISO(dateISO,{zone:tz}).startOf('day');
+  const dayEnd = dayStart.endOf('day');
+  inputs.workouts.forEach(w=>{
+    let mins = w.durationMin ?? 0;
+    const ws = w.startAt?DateTime.fromISO(w.startAt).setZone(tz):undefined;
+    const we = w.endAt?DateTime.fromISO(w.endAt).setZone(tz):undefined;
+    if(ws&&we){
+      const cs = ws<dayStart?dayStart:ws; const ce = we>dayEnd?dayEnd:we;
+      mins = Math.max(0, ce.diff(cs, 'minutes').minutes);
+      firstStart = firstStart ? (ws<firstStart?ws:firstStart) : ws;
+      lastEnd = lastEnd ? (we>lastEnd?we:lastEnd) : we;
+    }
+    gymDuration += Math.round(Math.max(0, mins));
+  });
+  const gymOk = gymDuration > 0;
+  const score = (sleepOk?1:0)+(kcalOk?1:0)+(gymOk?1:0) as 0|1|2|3;
+  const color: 'green'|'yellow'|'red' = score===3?'green':score===2?'yellow':'red';
+  const caloriesChip = `${kcalIntake}/${kcalGoal} ${kcalStatus} ${kcalDelta===0?'0':(kcalDelta>0?`+${kcalDelta}`:`${kcalDelta}`)}`;
+  const sleepChip = `${fmtHM(sleepMin)} ${sleepOk?'✅':'❌'}`;
+  const gymChip = gymOk?`✅ ${fmtHM(gymDuration)}${firstStart&&lastEnd?` (${firstStart.toFormat('t')}–${lastEnd.toFormat('t')})`:''}`:'❌';
+  return {dateISO,sleepMin,sleepOk,kcalIntake,kcalGoal,kcalDelta,kcalStatus,kcalOk,gymOk,gymStartAt:firstStart?.toISO(),gymEndAt:lastEnd?.toISO(),gymDurationMin:Math.round(gymDuration),scoreSmall:score,color,caloriesChip,sleepChip,gymChip};
+}
+```
+
+**/lib/streaks/counters.ts**
+
+```ts
+export function currentStreak(flagsDesc: boolean[]): number { let n=0; for(const v of flagsDesc){ if(!v) break; n++; } return n; }
+export function currentColorStreak(colorsDesc: ('green'|'yellow'|'red')[]) {
+  let greenOnly=0, nonRed=0; for(const c of colorsDesc){ if(c==='green') greenOnly++; else break; }
+  for(const c of colorsDesc){ if(c!=='red') nonRed++; else break; } return { greenOnly, nonRed };
+}
+```
+
+**/lib/mental/dreams.ts**
+
+```ts
+export type Dream = { title?: string; narrative: string; tags?: string[]; emotion?: number; intensity?: number; dateISO: string; };
+export async function analyzeDreams(dreams: Dream[], scope: 'single'|'week'){
+  const text = dreams.map(d=>d.narrative).join('\n---\n');
+  if(!text.trim()) return {summary:'No dream text provided.', themes:[], advice:'Add a few details next time.'};
+  const themes:string[]=[]; if(/car|vehicle|crash/i.test(text)) themes.push('travel/safety'); if(/fall|falling/i.test(text)) themes.push('control/instability'); if(/chase|run/i.test(text)) themes.push('avoidance/anxiety');
+  return { summary:`You logged ${dreams.length} dream(s). Common themes: ${themes.join(', ')||'—'}.`, themes, advice:'Wind-down: dim lights and 5–10 min breathing before bed.' };
+}
+```
+
+**/lib/mental/meditation.ts**
+
+```ts
+export function startFiveMinTimer(onTick:(secLeft:number)=>void,onDone:()=>void){ let left=300; const id=setInterval(()=>{ left-=1; onTick(left); if(left<=0){ clearInterval(id); onDone(); } },1000); return ()=>clearInterval(id); }
+```
+
+**/lib/life/evaluators.ts**
+
+```ts
+export function summarizeWork(day:{logs:{durationMin:number,stress?:'low'|'medium'|'high'}[]}){
+  const total = day.logs.reduce((s,l)=>s+(l.durationMin||0),0);
+  const c = day.logs.reduce((acc,l)=>{const v=l.stress||'low'; acc[v]=(acc[v]||0)+1; return acc;},{} as Record<string,number>);
+  const peak = (['high','medium','low'] as const).find(k=>c[k]&&c[k]>0) || null; return { totalMin: total, peakStress: peak };
+}
+export function topN<T extends {name:string,durationMin?:number}>(arr:T[], n=3){ return arr.sort((a,b)=>(b.durationMin||0)-(a.durationMin||0)).slice(0,n).map(x=>x.name); }
+```
+
+**/lib/life/report.ts**
+
+```ts
+const fmtHM=(m:number)=>`${Math.floor(m/60)}h${String(m%60).padStart(2,'0')}m`;
+export type BreakdownType='Previous Day'|'7 Day'|'30 Day'|'3 Month';
+export function generateLyfeReport(input:{
+  breakdown:BreakdownType; streakColor:'GREEN'|'YELLOW'|'RED'; gymMin:number; sleepMin:number;
+  calories:{ intake:number; goal:number; status:'UN'|'OV'|'GOAL'; delta:number };
+  mental:'GOOD'|'OK'|'BAD'; meditationMin:number;
+  dream:{type?:string; short?:string}|null;
+  social:{ totalMin:number; activities:string[] };
+  hobbies:{ totalMin:number; activities:string[] };
+  work:{ totalMin:number; stress:'low'|'medium'|'high'|null };
+  drugs:{ summary:string; withdrawal?:{ drug:string; symptom:string; strength:'low'|'medium'|'high'}|null; recoveryDays?:Record<string,number> };
+}):string{
+  const L:string[]=[];
+  L.push(`Here is ${input.breakdown} Lyfe Report:`);
+  L.push(`Streak Status: ${input.streakColor}`);
+  L.push(`1. Gym Time: ${fmtHM(input.gymMin)}`);
+  L.push(`2. Sleep: ${fmtHM(input.sleepMin)}`);
+  const c=input.calories; L.push(`3. Calories ${c.intake}/${c.goal} ${c.status} ${c.delta>=0?`+${c.delta}`:`${c.delta}`}`);
+  L.push(`You listed your Mental Health as: ${input.mental}.`);
+  L.push(`Meditation: ${input.meditationMin>0?fmtHM(input.meditationMin):'None'}.`);
+  if(input.dream) L.push(`Dream Analysis: ${input.dream.type||'—'} - ${input.dream.short||'—'}.`);
+  const s=input.social; L.push(`Social Presence: You spent, ${fmtHM(s.totalMin)}, being social yesterday:`); s.activities.slice(0,3).forEach((a,i)=>L.push(`${i+1}. ${a}`));
+  const h=input.hobbies; L.push(`Hobbies: You spent, ${fmtHM(h.totalMin)}, doing hobbies.`); h.activities.slice(0,3).forEach((a,i)=>L.push(`${i+1}. ${a}`));
+  const w=input.work; if(w.totalMin>0) L.push(`Work: You worked for ${Math.round(w.totalMin/60)} hours and had a ${w.stress??'—'} stress day.`);
+  const d=input.drugs; L.push(`Drug Use: You consumed; ${d.summary}, yesterday.`+(d.withdrawal?` You also listed your ${d.withdrawal.drug} withdrawal symptoms of "${d.withdrawal.symptom}" as "${d.withdrawal.strength}".`:''));
+  return L.join('\n');
+}
+```
+
+**/lib/life/mr_pbj.ts**
+
+```ts
+export async function mrPBJCoach(report:any){
+  const tips:string[]=[];
+  if(report.streakColor==='GREEN') tips.push('You kept the full streak—awesome consistency!');
+  if(report.streakColor==='YELLOW') tips.push('Solid day: 2/3 pillars. Try a 10‑min walk or lighter dinner to hit 3/3.');
+  if(report.streakColor==='RED') tips.push('Tough day happens. Focus on sleep + one easy win (short workout or mindful meal).');
+  if(report.calories?.status==='OV') tips.push('Plan a protein‑forward breakfast and pre‑log dinner to avoid spillover.');
+  if(report.sleepMin<420) tips.push('Aim lights‑out 30–45 min earlier tonight.');
+  if(report.drugs?.recoveryDays && Object.values(report.drugs.recoveryDays).some((d:number)=>d>0)) tips.push('Proud of your clean streak—keep stacking days.');
+  if(report.drugs?.withdrawal?.symptom) tips.push('Try sugar‑free gum or a brief walk when cravings spike.');
+  if((report.dream?.type||'').toLowerCase().includes('nightmare')) tips.push('Reduce intense media before bed and try 5‑min breathing.');
+  return tips.join(' ');
+}
+```
+
+---
+
+## 7) Database Schema (Postgres + RLS)
+
+**Create tables (single pass).** Use snake_case; enable RLS on all; default policy `using (auth.uid() = user_id)` where applicable.
+
+```sql
+-- PROFILES
+create table profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  profile_json jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+-- GOALS
+create table goals (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  goal_weight_kg numeric(6,2),
+  pace_lb_per_week numeric(4,2),
+  step_goal int,
+  kcal_floor int,
+  updated_at timestamptz not null default now()
+);
+
+-- SLEEP
+create table sleep_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  start_at timestamptz not null,
+  end_at timestamptz not null,
+  duration_min int generated always as (extract(epoch from (end_at - start_at))/60)::int stored,
+  quality int,
+  notes text
+);
+
+-- BODY METRICS (weight, body fat, etc.)
+create table body_metrics (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  date date not null,
+  weight_kg numeric(6,2) not null,
+  body_fat_pct numeric(5,2),
+  muscle_kg numeric(6,2),
+  water_pct numeric(5,2),
+  visceral_fat numeric(5,2),
+  source text,
+  raw_json jsonb,
+  unique(user_id, date)
+);
+
+-- STEPS
+create table steps (
+  user_id uuid references auth.users(id) on delete cascade,
+  date date not null,
+  steps int not null default 0,
+  active_minutes int,
+  source text,
+  primary key (user_id, date)
+);
+
+-- MEALS
+create table meals (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  date date not null,
+  meal_type text,
+  calories int not null,
+  protein_g numeric(6,2),
+  carbs_g numeric(6,2),
+  fat_g numeric(6,2),
+  notes text
+);
+
+-- WORKOUTS (+ timing)
+create table workouts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  date date not null,
+  template_id text,
+  rpe numeric(4,2),
+  notes text,
+  duration_min int,
+  start_at timestamptz,
+  end_at timestamptz
+);
+
+-- EXERCISES
+create table exercises (
+  id text primary key,
+  name text not null,
+  equipment text,
+  primary_muscle text,
+  smith_friendly_bool boolean default false
+);
+
+-- WORKOUT SETS
+create table workout_sets (
+  id uuid primary key default gen_random_uuid(),
+  workout_id uuid references workouts(id) on delete cascade,
+  exercise_id text references exercises(id),
+  set_no int,
+  weight_kg numeric(6,2),
+  reps int,
+  rir int
+);
+
+-- MENTAL (yesterday)
+create table mental_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  date date not null,
+  rating text not null check (rating in ('great','ok','bad')),
+  why text,
+  created_at timestamptz not null default now(),
+  unique(user_id, date)
+);
+
+-- DREAMS
+create table dream_entries (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  date date not null,
+  title text,
+  narrative text,
+  tags text[],
+  emotion int check (emotion between 1 and 5),
+  intensity int check (intensity between 1 and 5),
+  ai_summary text,
+  ai_themes text[],
+  ai_advice text,
+  created_at timestamptz not null default now()
+);
+
+-- WORK & STRESS
+create table work_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  date date not null,
+  start_at timestamptz,
+  end_at timestamptz,
+  duration_min int generated always as (case when start_at is not null and end_at is not null then greatest(0, extract(epoch from (end_at - start_at))/60)::int else 0 end) stored,
+  stress text check (stress in ('low','medium','high'))
+);
+
+-- MEDITATION
+create table meditation_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  date date not null,
+  duration_min int not null,
+  feeling text check (feeling in ('calm','neutral','restless')),
+  started_at timestamptz default now()
+);
+
+-- HOBBIES & SOCIAL
+create table hobbies (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  name text not null,
+  primary_hobby boolean not null default false
+);
+
+create table hobby_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  hobby_id uuid references hobbies(id) on delete cascade,
+  date date not null,
+  start_at timestamptz,
+  end_at timestamptz,
+  duration_min int
+);
+
+create table social_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  date date not null,
+  activity text not null,
+  duration_min int default 0
+);
+
+-- DRUGS & RECOVERY
+create table drug_profiles (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  name text not null,
+  type text,
+  in_recovery boolean not null default false,
+  clean_since date,
+  goal text
+);
+
+create table drug_use_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  date date not null,
+  drug_id uuid references drug_profiles(id) on delete cascade,
+  amount text,
+  notes text
+);
+
+create table withdrawal_symptoms (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  date date not null,
+  drug_id uuid references drug_profiles(id) on delete cascade,
+  symptom text,
+  strength text check (strength in ('low','medium','high'))
+);
+
+-- DAILY ANALYTICS (Big 3 + Lyfe)
+create table analytics_daily (
+  user_id uuid references auth.users(id) on delete cascade,
+  date date not null,
+  -- Sleep
+  sleep_min int not null default 0,
+  sleep_ok boolean not null default false,
+  -- Calories
+  kcal_intake int not null default 0,
+  kcal_goal int not null default 0,
+  kcal_delta int not null default 0,
+  kcal_ok boolean not null default false,
+  kcal_status text not null default 'GOAL', -- 'UN' | 'OV' | 'GOAL'
+  -- Gym
+  gym_ok boolean not null default false,
+  gym_start_at timestamptz,
+  gym_end_at timestamptz,
+  gym_duration_min int not null default 0,
+  -- Summary color & score
+  score_small int not null default 0,      -- 0..3
+  color text not null default 'red',       -- 'green'|'yellow'|'red'
+  -- Mental & Lyfe
+  mental_rating text,                      -- 'great'|'ok'|'bad'
+  mental_why text,
+  dream_count int default 0,
+  meditation_min int default 0,
+  work_min int default 0,
+  work_stress text,
+  social_min int default 0,
+  hobby_min int default 0,
+  top_social_activities text[],
+  top_hobbies text[],
+  drug_summary text,
+  recovery_days jsonb,
+  created_at timestamptz not null default now(),
+  primary key (user_id, date)
+);
+
+-- WEEKLY ANALYTICS
+create table analytics_weekly (
+  user_id uuid references auth.users(id) on delete cascade,
+  week_start date not null,
+  kcal_avg int,
+  tdee_est int,
+  deficit_avg int,
+  steps_avg int,
+  sleep_avg_h numeric(4,2),
+  trend_loss_lb numeric(5,2),
+  notes text,
+  primary key (user_id, week_start)
+);
+
+-- INDEXES
+create index on body_metrics(user_id, date);
+create index on steps(user_id, date);
+create index on meals(user_id, date);
+create index on workouts(user_id, date);
+create index on social_logs(user_id, date);
+create index on hobby_sessions(user_id, date);
+create index on work_logs(user_id, date);
+create index on meditation_sessions(user_id, date);
+create index on dream_entries(user_id, date);
+create index analytics_daily_user_date on analytics_daily(user_id, date);
+```
+
+**RLS (examples):**
+
+```sql
+alter table profiles enable row level security;
+create policy p_profiles on profiles for all using (auth.uid() = user_id);
+-- Repeat for all per-user tables.
+```
+
+**Views (sketch):**
+
+* `v_weight_trend` (EWMA λ=0.25 by user)
+* `v_weekly_rollup` (7‑day aggregates for steps, sleep, intake, trend loss)
+
+---
+
+## 8) Edge Functions & Cron
+
+**daily-analytics:** triggers on inserts/updates to `meals`, `sleep_sessions`, `workouts`, `meditation_sessions`, `social_logs`, `hobby_sessions`, `work_logs`, `mental_logs`, `drug_use_logs`, `withdrawal_symptoms`. Recompute last 30 days per user using `/lib/streaks/evaluator.ts` and Lyfe summarizers, then UPSERT `analytics_daily`.
+
+**weekly-coach:** every 7 days: build **Weekly Coach Report** (intake vs TDEE_est, steps avg, sleep avg, trend loss, strength notes) + **Mr. PBJ** suggestions. Apply plateau/recovery/overreach rules.
+
+**plateau:** checks 14‑day plateau & adherence guardrails, propose tweaks.
+
+**cron:** nightly 02:00 local for backfill; send streak & recovery milestones.
+
+---
+
+## 9) Notifications
+
+* **Morning:** “Log sleep & weigh‑in” + **Mental & Dream** + “Did you work yesterday?”
+* **Midday:** Meditation nudge (start 5‑min timer).
+* **Pre‑dinner:** Calorie check‑in.
+* **Evening:** Plan tomorrow & bedtime window.
+* **Recovery:** Clean‑day milestones; symptom‑high motivation.
+
+---
+
+## 10) Acceptance Criteria
+
+* Today shows **Green/Yellow/Red** with **3/3, 2/3, 1/3** and chips (exact formats).
+* Main streaks: **Green‑only** and **On‑Track (≥2/3)** counters.
+* Section streaks: Gym/Sleep/Calories + Meditation + Recovery.
+* Workout card shows **check‑in/out** and duration; multiple sessions aggregate.
+* Calories chip renders exact formatting.
+* Sleep ≥6h logic uses **session end date**.
+* Morning prompts capture Mental/Why, Dream, Work+Stress, Meditation.
+* Dreams tab logs & **AI analyzes** single/week.
+* Social & Hobbies time log; primary hobby used in nudges.
+* Drugs page: warning, in‑recovery toggle, clean‑days, symptoms, AI coping.
+* Lyfe Report renders **Day/7/30/90** in specified template + **Mr. PBJ** commentary.
+* Health bridges read steps/weight when permissions granted; manual fallback works.
+* CSV export available for all diaries.
+
+---
+
+## 11) Roadmap
+
+**MVP (now):** Today screen; Sleep; Weigh‑in (manual + OS bridge); Steps; Meals (manual); Workout logger; Trends (weight/steps/sleep); Streaks; Lyfe basics (Mental, Work, Meditation timer, Social/Hobbies, Drugs); Weekly Coach rules; Push notifications.
+**V1.1:** Adaptive TDEE; simple food DB; favorites; PR charts; template library & Smith variants; adherence badges.
+**V2:** Barcode scan; macro targets; HR/active minutes; readiness score (sleep + HR + soreness); AI meal hints; social/coach sharing.
+
+---
+
+## 12) Seeds & Testing
+
+* Seed 21 days of synthetic data (minor plateau, under‑sleep week, one PR in leg press, some dreams, meditation on/off, social/hobby variety, recovery example).
+* Unit tests for calcs, streak evaluator, Lyfe report; snapshot tests for coach outputs.
+
+---
+
+## 13) Implementation Notes for Agent
+
+1. Scaffold Expo app with TS; set up HealthKit/Health Connect permissions via config plugins.
+2. Create Supabase schema + RLS policies + indexes + views; generate types.
+3. Implement **HealthBridge** with mock adapter for web preview; switch to native on device.
+4. Build screens & cards per flow; offline‑first patterns (optimistic updates).
+5. Implement **daily-analytics** edge function and cron; **weekly-coach** summary.
+6. Add acceptance checklist to README and ensure all KPI tiles visible.
+7. Provide CSV export endpoints and in‑app export.
+
+---
+
+## 14) Deliverables
+
+* Running Expo app (device‑ready).
+* Supabase SQL & RLS policies.
+* Edge functions (daily/weekly).
+* Seed scripts.
+* README with setup, .env, permissions, Expo push, and release checklist.
+* Tests (calcs, streaks, reports).
+
+---
+
+**END OF PROMPT**

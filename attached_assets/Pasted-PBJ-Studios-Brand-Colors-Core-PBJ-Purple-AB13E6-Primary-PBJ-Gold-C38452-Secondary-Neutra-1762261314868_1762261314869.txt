@@ -1,0 +1,163 @@
+PBJ Studios — Brand Colors
+
+Core
+
+PBJ Purple #AB13E6 (Primary)
+
+PBJ Gold #C38452 (Secondary)
+
+Neutrals (dark-first UI)
+
+Ink #0B0C0F (app background)
+
+Coal #101217 (surface / cards)
+
+Slate #1B2027 (elevated surface)
+
+Mist #E7EBF0 (borders on dark)
+
+Cloud #F7F9FC (light backgrounds)
+
+Graphite #8C96A5 (muted text)
+
+Support accents (use sparingly)
+
+Electric Teal #1FE8C6 (success/accents)
+
+Hot Coral #FF5A7A (errors)
+
+Amber #FFB648 (warnings)
+
+Sky #46A3FF (info)
+
+Brand gradients
+
+PBJ Dawn: linear-gradient(135deg, #AB13E6 0%, #C38452 100%)
+
+Nebula: linear-gradient(135deg, #AB13E6 0%, #1FE8C6 50%, #C38452 100%)
+
+Night Glow (overlay): radial-gradient(60% 60% at 50% 0%, rgba(171,19,230,.25) 0%, rgba(12,12,16,0) 60%), radial-gradient(40% 40% at 100% 100%, rgba(195,132,82,.2) 0%, rgba(12,12,16,0) 70%)
+
+App Aesthetics
+
+Vibe
+
+Futuristic-but-grounded: dark UI, soft gloss highlights, subtle fractal/noise textures, cinematic depth. Purple = energy, gold = prestige.
+
+Layout & spacing
+
+8pt grid. Key steps: 4/8/12/16/24/32/48/64.
+
+Max content width 1200–1280px, generous gutters.
+
+Cards: spacious padding (20–24px), breathing room.
+
+Radii & elevation
+
+Corners: 20px (2xl) default; buttons 12–14px.
+
+Shadows (dark):
+
+Low: 0 1px 0 rgba(255,255,255,.03), 0 6px 16px rgba(0,0,0,.35)
+
+High / Glow: add 0 0 24px rgba(171,19,230,.25) or 0 0 24px rgba(195,132,82,.22) on hover/focus.
+
+Typography
+
+Display / H1–H3: Outfit or Poppins, 600–700.
+
+Body / UI: Inter (or Satoshi) 400–600.
+
+Mono (code/metrics): JetBrains Mono.
+
+Tracking: headlines slight-tight, UI labels normal.
+
+Avoid gold as body text on light; use gold for accents, icons, and strokes.
+
+Iconography & motion
+
+Linear, duotone lines (lucide-react). 1.5px stroke.
+
+Micro-interactions (Framer Motion): 120–180ms ease-out; scale 1.02 on hover for primary buttons; reduce-motion safe.
+
+Imagery
+
+“Purple clouds & fractal energy” overlays at 6–12% opacity.
+
+Cinematic lighting: rim lights in PBJ Purple, warm fills from PBJ Gold.
+
+Accessibility
+
+Primary text ≥ AA 4.5:1.
+
+Purple on Ink: ✅; Gold on Ink: ✅; Gold on white: ❌ (use darker gold #9A6A3F or pair with dark stroke).
+
+Focus ring: 2px Electric Teal #1FE8C6 outer + 1px inner contrast.
+
+Practical Tokens (CSS & Tailwind)
+
+CSS variables
+
+:root {
+  --pbj-purple: #AB13E6;
+  --pbj-gold: #C38452;
+  --pbj-ink: #0B0C0F;
+  --pbj-coal: #101217;
+  --pbj-slate: #1B2027;
+  --pbj-mist: #E7EBF0;
+  --pbj-graphite: #8C96A5;
+  --pbj-teal: #1FE8C6;
+  --pbj-coral: #FF5A7A;
+  --pbj-amber: #FFB648;
+  --pbj-sky: #46A3FF;
+
+  --pbj-radius-lg: 20px;
+  --pbj-shadow-low: 0 1px 0 rgba(255,255,255,.03), 0 6px 16px rgba(0,0,0,.35);
+  --pbj-glow-purple: 0 0 24px rgba(171,19,230,.25);
+  --pbj-glow-gold: 0 0 24px rgba(195,132,82,.22);
+}
+
+
+Tailwind theme extension
+
+// tailwind.config.js
+export default {
+  darkMode: ['class'],
+  theme: {
+    extend: {
+      colors: {
+        pbj: {
+          purple: '#AB13E6',
+          gold: '#C38452',
+          ink: '#0B0C0F',
+          coal: '#101217',
+          slate: '#1B2027',
+          mist: '#E7EBF0',
+          graphite: '#8C96A5',
+          teal: '#1FE8C6',
+          coral: '#FF5A7A',
+          amber: '#FFB648',
+          sky: '#46A3FF',
+        },
+      },
+      borderRadius: { xl: '20px' },
+      boxShadow: {
+        pbj: '0 1px 0 rgba(255,255,255,.03), 0 6px 16px rgba(0,0,0,.35)',
+        'pbj-glow-purple': '0 0 24px rgba(171,19,230,.25)',
+        'pbj-glow-gold': '0 0 24px rgba(195,132,82,.22)',
+      },
+    },
+  },
+  plugins: [],
+}
+
+
+Component cheats
+
+Primary button: bg pbj.purple, text white, shadow pbj, hover add pbj-glow-purple.
+
+Secondary button: border pbj.gold, text pbj.gold, hover bg rgba(195,132,82,.08).
+
+Card: bg pbj.coal, ring 1px rgba(231,235,240,.06), shadow pbj.
+
+Focus: outline-2 outline-offset-2 outline-pbj-teal.

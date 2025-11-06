@@ -1,0 +1,84 @@
+Hero (top of page)
+
+Headline
+PBJ LYFE
+
+Sub-headline (standard)
+One simple daily flow to track your Lyfe.
+
+Value line (standard)
+Track your health, build streaks, and achieve sustainable health goals with mental health & lifestyle insights.
+
+Short / Mobile sub-headline
+Your daily flow for health, habits, and Lyfe.
+
+CTA button
+Get Started
+
+Optional secondary CTA (link-style)
+See how it works
+
+Section header above the cards
+
+Title
+Everything You Need to Win Your Day
+
+Subtitle (optional)
+PBJ LYFE keeps it simple: one place to log, learn, and level up—without the noise.
+
+Feature cards (titles + punchy, personal descriptions)
+1) Weight & Nutrition → Food, Weight & Trends
+
+Copy (standard):
+Log meals in seconds and let PBJ LYFE do the math. See calories, protein, and weekly trend lines that smooth out the noise so you stay consistent—not obsessed.
+Short: Quick logging, smart trends, real progress.
+
+2) Sleep Tracking → Sleep & Recovery
+
+Copy (standard):
+Record sleep and quality each morning. PBJ LYFE highlights patterns and nudges you toward the 6–8 hour sweet spot that powers fat loss, focus, and mood.
+Short: Better sleep, better days.
+
+3) Workout Logger → Workouts that Build
+
+Copy (standard):
+Track check-in/out times, exercises, sets, and PRs. Auto-progression suggestions keep you moving forward—even on busy weeks.
+Short: Log it. Level up. Repeat.
+
+4) Duolingo-Style Streaks → Streaks that Stick
+
+Copy (standard):
+Green (3/3), Yellow (2/3), Red (0–1/3). Simple daily targets that build momentum, not guilt. Miss a day? PBJ LYFE helps you bounce back fast.
+Short: Momentum you can feel.
+
+5) Mental Health & Dreams → Mind, Mood & Headspace
+
+Copy (standard):
+Tap in your mood, note dreams, breathe for a minute. PBJ LYFE connects mental health and habits so you can see what actually helps you feel good.
+Short: Track how you feel, not just what you do.
+
+6) Lifestyle & Recovery → Life, Social & Stress
+
+Copy (standard):
+Log work stress, social nights, and off days. PBJ LYFE shows how real-life choices affect sleep, weight, and workouts—no shame, just clarity.
+Short: Real life, reflected in your data.
+
+Benefits strip (optional, under the cards)
+
+Personal, not perfect. PBJ LYFE rewards consistency over all-or-nothing streaks.
+
+Your data, your pace. One simple daily flow—no clutter, no 20-step setup.
+
+Whole-human view. Health + habits + headspace in one place.
+
+Sustainable wins. Tiny actions that compound into big changes.
+
+Microcopy (use around the page)
+
+“Log today. Win the week.”
+
+“Small moves. Big momentum.”
+
+“You don’t need perfect. You need PBJ LYFE.”
+
+“Missed a day? We’ll help you restart.”
