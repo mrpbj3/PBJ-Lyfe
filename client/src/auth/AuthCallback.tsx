@@ -1,7 +1,7 @@
 // client/src/auth/AuthCallback.tsx
 import { useEffect } from "react";
 import { useLocation } from "wouter";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/lib/supabase";
 
 export default function AuthCallback() {
   const [, navigate] = useLocation();
