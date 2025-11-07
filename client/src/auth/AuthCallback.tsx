@@ -1,4 +1,3 @@
-// client/src/auth/AuthCallback.tsx
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -34,12 +33,12 @@ export default function AuthCallback() {
 
       // If no profile yet, go to the onboarding/profile-setup page
       if (!profile) {
-        navigate("/profile/setup", { replace: true });
+        navigate("/onboarding/ProfileOnboarding", { replace: true });
         return;
       }
 
-      // Otherwise, go to dashboard (Today)
-      navigate("/", { replace: true });
+      // Otherwise, go to Today
+      navigate("/today", { replace: true });
     })();
   }, [navigate]);
 
