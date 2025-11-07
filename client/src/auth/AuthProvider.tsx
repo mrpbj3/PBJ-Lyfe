@@ -30,19 +30,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // initial
-    supabase.auth.getSession().then(async ({ data }) => {
-      setSession(data.session ?? null);
-      if (data.session?.user) await ensureBootstrap(data.session.user);
-      setLoading(false);
-    });
+    let mounted = true;
+
+    (async () => {
+      try {
+        const result = await supabase.auth.getSession();
+        if (!mounted) return;
+        setSession(result.data.session ?? null);
+        if (result.data.session?.user) {
+          // bootstrap but fail silently so we don't block UI
+          try {
+            await ensureBootstrap(result.data.session.user);
+          } catch (err) {
+            console.error('bootstrap error', err);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching supabase session', err);
+      } finally {
+        // ALWAYS clear loading to avoid the app getting stuck on a blank loading screen
+        if (mounted) setLoading(false);
+      }
+    })();
 
     // subscribe
     const { data: sub } = supabase.auth.onAuthStateChange(async (_evt, s) => {
-      setSession(s);
-      if (s?.user) await ensureBootstrap(s.user);
+      try {
+        setSession(s);
+        if (s?.user) {
+          try {
+            await ensureBootstrap(s.user);
+          } catch (err) {
+            console.error('bootstrap on auth change error', err);
+          }
+        }
+      } catch (err) {
+        console.error('onAuthStateChange handler error', err);
+      }
     });
-    return () => sub.subscription.unsubscribe();
+
+    return () => {
+      mounted = false;
+      try {
+        sub.subscription.unsubscribe();
+      } catch { /* ignore */ }
+    };
   }, []);
 
   return (
