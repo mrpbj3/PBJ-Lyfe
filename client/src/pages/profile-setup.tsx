@@ -7,11 +7,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
 /* PBJ colorway */
 const PBJ_PRIMARY = "#AB13E6";
-const PROFILE_COLORS = ["#AB13E6", "#C38452", "#6EE7B7", "#60A5FA", "#F97316", "#F472B6", "#A78BFA", "#34D399", "#FB7185", "#FBBF24"];
+const PROFILE_COLORS = [
+  "#AB13E6",
+  "#C38452",
+  "#6EE7B7",
+  "#60A5FA",
+  "#F97316",
+  "#F472B6",
+  "#A78BFA",
+  "#34D399",
+  "#FB7185",
+  "#FBBF24",
+];
 
 /* simple SHA-256 for passcode hashing (client-side) */
 async function hashPasscode(pass: string) {
@@ -23,10 +35,11 @@ async function hashPasscode(pass: string) {
 }
 
 /*
-  NOTE
-  - Adds starting_weight and starting_height inputs
-  - starting_height is stored as cm in profiles.starting_height_cm
-  - If user selects ft+in we convert to cm when saving
+  Full single-page onboarding:
+  - All sections present.
+  - Accounts & Basics now includes Starting weight + Starting height inputs.
+  - Height stored as starting_height_cm in profiles (converted from ft+in if necessary).
+  - Save Profile saves everything in one mutation and navigates to /today on success.
 */
 
 export default function ProfileSetup() {
@@ -44,12 +57,7 @@ export default function ProfileSetup() {
   const [unitsWeight, setUnitsWeight] = useState<"lb" | "kg">("kg");
   const [unitsHeight, setUnitsHeight] = useState<"ftin" | "cm">("cm");
 
-  // Starting weight (number) - store raw, unit in unitsWeight
   const [startingWeight, setStartingWeight] = useState<number | "">("");
-
-  // Starting height:
-  // - if unitsHeight === 'cm' use startingHeightCm
-  // - if unitsHeight === 'ftin' use feet/inches fields and convert on save
   const [startingHeightCm, setStartingHeightCm] = useState<number | "">("");
   const [heightFeet, setHeightFeet] = useState<number | "">("");
   const [heightInches, setHeightInches] = useState<number | "">("");
@@ -86,13 +94,17 @@ export default function ProfileSetup() {
     use_drug_use: true,
   });
 
+  // Notifications
   const [dailyCheckinTime, setDailyCheckinTime] = useState<string | null>(null);
+
+  // Data sources (placeholder previous check-ins)
+  const [previousCheckins, setPreviousCheckins] = useState<string[]>([]);
 
   // UI state
   const [isDirty, setIsDirty] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Load existing values
+  // Load existing values (profiles, privacy_prefs, recovery_substances)
   useEffect(() => {
     if (authLoading || !user) return;
     (async () => {
@@ -115,15 +127,16 @@ export default function ProfileSetup() {
           setWorkoutDaysTarget(data.workout_days_target ?? "");
           setInRecovery(Boolean(data.in_recovery));
           setDailyCheckinTime(data.daily_checkin_time ?? null);
+
           // starting weight
           if (typeof data.starting_weight !== "undefined" && data.starting_weight !== null) {
             setStartingWeight(Number(data.starting_weight));
           }
+
           // starting height
           if (typeof data.starting_height_cm !== "undefined" && data.starting_height_cm !== null) {
             const cm = Number(data.starting_height_cm);
             if ((data.units_height as string) === "ftin") {
-              // convert cm to ft/in display
               const totalInches = cm / 2.54;
               const ft = Math.floor(totalInches / 12);
               const inch = Math.round(totalInches - ft * 12);
@@ -158,10 +171,18 @@ export default function ProfileSetup() {
           if (typeof prefs.prescribed !== "undefined") setPrescribed(Boolean(prefs.prescribed));
         }
 
-        const { data: recs } = await supabase.from("recovery_substances").select("id,name,start_date,track_withdrawal").eq("user_id", user.id);
+        const { data: recs } = await supabase
+          .from("recovery_substances")
+          .select("id,name,start_date,track_withdrawal")
+          .eq("user_id", user.id);
         if (recs && Array.isArray(recs)) {
-          setRecoveryList(recs.map((r: any) => ({ id: r.id, name: r.name, start_date: r.start_date, track_withdrawal: !!r.track_withdrawal })));
+          setRecoveryList(
+            recs.map((r: any) => ({ id: r.id, name: r.name, start_date: r.start_date, track_withdrawal: !!r.track_withdrawal }))
+          );
         }
+
+        // placeholder previous check-ins
+        setPreviousCheckins(["Day 1 — Mood: Good, Calories: 2000", "Day 2 — Mood: Okay, Calories: 1800"]);
       } catch (err) {
         console.error("load onboarding", err);
       }
@@ -204,7 +225,7 @@ export default function ProfileSetup() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
 
-  // Save everything in one mutation
+  // mutation: save everything at once
   const mutation = useMutation({
     mutationFn: async (payload: any) => {
       if (!user) throw new Error("No user");
@@ -239,7 +260,7 @@ export default function ProfileSetup() {
         daily_checkin_time: payload.daily_checkin_time ?? null,
       };
 
-      // upsert profiles (defensive retry if daily_checkin_time missing)
+      // upsert profiles (defensive: retry without daily_checkin_time if column missing)
       try {
         const { error } = await supabase.from("profiles").upsert(profilesPayload, { onConflict: "id" });
         if (error) throw error;
@@ -290,7 +311,11 @@ export default function ProfileSetup() {
 
   async function handleSaveProfile() {
     if (!firstName.trim() || !lastName.trim() || prescribed === null) {
-      toast({ title: "Missing required answers", description: "Please complete first name, last name and answer Prescribed.", variant: "destructive" });
+      toast({
+        title: "Missing required answers",
+        description: "Please complete first name, last name and answer Prescribed.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -319,16 +344,22 @@ export default function ProfileSetup() {
 
       navigate("/today", { replace: true });
     } catch (err) {
-      // mutation onError shows toast
+      // mutation onError will show toast
     } finally {
       setSaving(false);
     }
   }
 
   // recovery helpers
-  function addRecoveryItem() { setRecoveryList((s) => [...s, { id: `${Date.now()}`, name: "", start_date: "", track_withdrawal: false }]); }
-  function updateRecoveryItem(id: string, changes: Partial<any>) { setRecoveryList((s) => s.map((r) => (r.id === id ? { ...r, ...changes } : r))); }
-  function removeRecoveryItem(id: string) { setRecoveryList((s) => s.filter((r) => r.id !== id)); }
+  function addRecoveryItem() {
+    setRecoveryList((s) => [...s, { id: `${Date.now()}`, name: "", start_date: "", track_withdrawal: false }]);
+  }
+  function updateRecoveryItem(id: string, changes: Partial<any>) {
+    setRecoveryList((s) => s.map((r) => (r.id === id ? { ...r, ...changes } : r)));
+  }
+  function removeRecoveryItem(id: string) {
+    setRecoveryList((s) => s.filter((r) => r.id !== id));
+  }
 
   // redirect unauthenticated users
   useEffect(() => {
@@ -382,7 +413,7 @@ export default function ProfileSetup() {
                     style={{
                       width: 40,
                       height: 40,
-                      borderRadius: 999,
+                      borderRadius: "999px",
                       background: c,
                       boxShadow: profileColor === c ? `0 0 0 4px ${PBJ_PRIMARY}33` : undefined,
                       border: profileColor === c ? `2px solid ${PBJ_PRIMARY}` : "1px solid #eee",
@@ -456,9 +487,158 @@ export default function ProfileSetup() {
           </div>
         </section>
 
-        {/* Goals & rest omitted for brevity; unchanged */}
-        {/* ... rest of the form (Goals, Drug Use, Privacy, Notifications, Actions) ... */}
+        {/* Goals & Targets */}
+        <section className="bg-white rounded-xl shadow p-6">
+          <h3 className="text-xl font-semibold mb-4">Goals & Targets</h3>
+          <div className="grid gap-4">
+            <div>
+              <Label>Daily calorie target (kcal)</Label>
+              <Input
+                type="number"
+                value={calorieTarget ?? ""}
+                onChange={(e) => setCalorieTarget(e.target.value === "" ? "" : parseInt(e.target.value))}
+                placeholder="2000"
+              />
+            </div>
 
+            <div>
+              <Label>Workout days target (days/week)</Label>
+              <Input
+                type="number"
+                value={workoutDaysTarget ?? ""}
+                onChange={(e) => setWorkoutDaysTarget(e.target.value === "" ? "" : parseInt(e.target.value))}
+                placeholder="3"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Drug Use */}
+        <section className="bg-white rounded-xl shadow p-6">
+          <h3 className="text-xl font-semibold mb-4">Drug Use</h3>
+
+          <div className="mb-4">
+            <Label>Prescribed?</Label>
+            <div className="flex items-center gap-4 mt-2">
+              <label className="flex items-center gap-2">
+                <input type="radio" name="prescribed" checked={prescribed === true} onChange={() => setPrescribed(true)} />
+                <span>Yes</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="radio" name="prescribed" checked={prescribed === false} onChange={() => setPrescribed(false)} />
+                <span>No</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <Label>In recovery?</Label>
+            <div className="mt-2">
+              <Switch checked={inRecovery} onCheckedChange={(v) => setInRecovery(Boolean(v))} />
+            </div>
+          </div>
+
+          {inRecovery && (
+            <div className="space-y-4">
+              {recoveryList.map((r) => (
+                <div key={r.id} className="p-3 border rounded">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <Label>Name</Label>
+                      <Input value={r.name} onChange={(e) => updateRecoveryItem(r.id, { name: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Start date</Label>
+                      <Input type="date" value={r.start_date ?? ""} onChange={(e) => updateRecoveryItem(r.id, { start_date: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Track withdrawal?</Label>
+                      <div className="mt-2">
+                        <Switch checked={!!r.track_withdrawal} onCheckedChange={(v) => updateRecoveryItem(r.id, { track_withdrawal: Boolean(v) })} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex justify-end">
+                    <Button variant="ghost" onClick={() => removeRecoveryItem(r.id)}>Remove</Button>
+                  </div>
+                </div>
+              ))}
+
+              <div>
+                <Button onClick={addRecoveryItem} style={{ background: PBJ_PRIMARY, color: "white" }}>
+                  Add substance
+                </Button>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Privacy & Analytics */}
+        <section className="bg-white rounded-xl shadow p-6">
+          <h3 className="text-xl font-semibold mb-4">Privacy & Analytics</h3>
+
+          <div className="grid gap-4">
+            <div>
+              <Label>Passcode (4–6 digits) — required to unlock sensitive toggles</Label>
+              <Input
+                value={passcode}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "").slice(0, 6);
+                  setPasscode(digits);
+                  if (digits.length >= 4) setPasscodeLocked(false);
+                }}
+                placeholder="Enter 4–6 digit passcode"
+              />
+            </div>
+
+            <div>
+              <Label>Sensitive categories (locked until passcode entered)</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                {Object.entries(sensitive).map(([k, v]) => (
+                  <div key={k} className="flex items-center justify-between border rounded p-3">
+                    <span className="capitalize">{k.replace(/_/g, " ")}</span>
+                    <Switch checked={v} disabled={passcodeLocked} onCheckedChange={(val) => setSensitive((s) => ({ ...s, [k]: Boolean(val) }))} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label>Analytics preferences</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                {Object.entries(analytics).map(([k, v]) => (
+                  <div key={k} className="flex items-center justify-between border rounded p-3">
+                    <span className="capitalize">{k.replace(/_/g, " ")}</span>
+                    <Switch checked={v} onCheckedChange={(val) => setAnalytics((s) => ({ ...s, [k]: Boolean(val) }))} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Notifications */}
+        <section className="bg-white rounded-xl shadow p-6">
+          <h3 className="text-xl font-semibold mb-4">Notifications</h3>
+          <div>
+            <Label>Daily check-in time (optional)</Label>
+            <Input type="time" value={dailyCheckinTime ?? ""} onChange={(e) => setDailyCheckinTime(e.target.value || null)} />
+          </div>
+        </section>
+
+        {/* Data Sources / previous check-ins (read-only) */}
+        <section className="bg-white rounded-xl shadow p-6">
+          <h3 className="text-xl font-semibold mb-4">Previous check-ins (read-only)</h3>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            {previousCheckins.length ? (
+              previousCheckins.map((p, idx) => <div key={idx} className="px-3 py-2 border rounded bg-[rgba(0,0,0,0.03)]">{p}</div>)
+            ) : (
+              <div>No previous check-ins found.</div>
+            )}
+          </div>
+        </section>
+
+        {/* Actions */}
         <section className="flex justify-end gap-4">
           <Button onClick={handleSaveProfile} style={{ background: PBJ_PRIMARY, color: "white" }} disabled={saving || mutation.isLoading} data-testid="save-profile">
             {saving || mutation.isLoading ? "Saving…" : "Save Profile"}
