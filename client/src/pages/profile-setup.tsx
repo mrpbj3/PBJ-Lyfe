@@ -494,12 +494,16 @@ export default function ProfileSetup() {
             </div>
 
             <div>
-              <Label>Weight units</Label>
-              <Select value={unitsWeight} onChange={(e: any) => setUnitsWeight(e.target.value)}>
-                <option value="kg">kg</option>
-                <option value="lb">lb</option>
-              </Select>
-            </div>
+  <Label>Weight units</Label>
+  <select
+    value={unitsWeight}
+    onChange={(e) => setUnitsWeight(e.target.value as "lb" | "kg")}
+    className="w-full rounded border px-3 py-2"
+  >
+    <option value="kg">kg</option>
+    <option value="lb">lb</option>
+  </select>
+</div>
 
             <div>
               <Label>Starting weight ({unitsWeight})</Label>
