@@ -35,11 +35,14 @@ async function hashPasscode(pass: string) {
 }
 
 /*
-  Full single-page onboarding:
-  - All sections present.
-  - Accounts & Basics now includes Starting weight + Starting height inputs.
-  - Height stored as starting_height_cm in profiles (converted from ft+in if necessary).
-  - Save Profile saves everything in one mutation and navigates to /today on success.
+  Full single-page onboarding with prescription UI change:
+  - "Prescribed?" is a toggle (Switch). When true a repeatable "Prescription" form area opens where user can add:
+      - Prescription drug Name
+      - Dosage
+      - Frequency taken
+  - Prescriptions are persisted into recovery_substances with prescribed = true and columns dosage/frequency
+  - Other recovery substances are persisted as before (prescribed = false)
+  - Migration (add-prescription-columns.sql) must be run to add dosage/frequency columns to recovery_substances
 */
 
 export default function ProfileSetup() {
@@ -56,7 +59,6 @@ export default function ProfileSetup() {
   // Accounts & Basics / Starting measurements
   const [unitsWeight, setUnitsWeight] = useState<"lb" | "kg">("kg");
   const [unitsHeight, setUnitsHeight] = useState<"ftin" | "cm">("cm");
-
   const [startingWeight, setStartingWeight] = useState<number | "">("");
   const [startingHeightCm, setStartingHeightCm] = useState<number | "">("");
   const [heightFeet, setHeightFeet] = useState<number | "">("");
@@ -66,8 +68,14 @@ export default function ProfileSetup() {
   const [calorieTarget, setCalorieTarget] = useState<number | "">("");
   const [workoutDaysTarget, setWorkoutDaysTarget] = useState<number | "">("");
 
-  // Drug Use
-  const [prescribed, setPrescribed] = useState<boolean | null>(null);
+  // Drug Use / Prescriptions
+  // 'prescribedToggle' controls whether the prescription input area is shown
+  const [prescribedToggle, setPrescribedToggle] = useState(false);
+  // prescriptionsList holds prescription records (repeatable)
+  const [prescriptionsList, setPrescriptionsList] = useState<
+    { id: string; name: string; dosage?: string; frequency?: string; start_date?: string }[]
+  >([]);
+  // recovery_substances for non-prescribed substances (keeps the old behavior)
   const [inRecovery, setInRecovery] = useState(false);
   const [recoveryList, setRecoveryList] = useState<
     { id: string; name: string; start_date?: string; track_withdrawal?: boolean }[]
@@ -149,6 +157,7 @@ export default function ProfileSetup() {
           }
         }
 
+        // privacy_prefs
         const { data: prefs } = await supabase.from("privacy_prefs").select("*").eq("user_id", user.id).maybeSingle();
         if (prefs) {
           setSensitive({
@@ -168,17 +177,39 @@ export default function ProfileSetup() {
             use_dreams: prefs.use_dreams ?? true,
             use_drug_use: prefs.use_drug_use ?? true,
           });
-          if (typeof prefs.prescribed !== "undefined") setPrescribed(Boolean(prefs.prescribed));
+          // if prescribed stored separately previously, we could infer; but default to false/prescribedToggle false
         }
 
+        // recovery_substances: split prescribed vs non-prescribed
         const { data: recs } = await supabase
           .from("recovery_substances")
-          .select("id,name,start_date,track_withdrawal")
+          .select("id,name,start_date,prescribed,track_withdrawal,dosage,frequency")
           .eq("user_id", user.id);
+
         if (recs && Array.isArray(recs)) {
-          setRecoveryList(
-            recs.map((r: any) => ({ id: r.id, name: r.name, start_date: r.start_date, track_withdrawal: !!r.track_withdrawal }))
-          );
+          const pres: any[] = [];
+          const nonPres: any[] = [];
+          recs.forEach((r: any) => {
+            if (r.prescribed) {
+              pres.push({
+                id: r.id,
+                name: r.name,
+                dosage: r.dosage ?? "",
+                frequency: r.frequency ?? "",
+                start_date: r.start_date ?? "",
+              });
+            } else {
+              nonPres.push({
+                id: r.id,
+                name: r.name,
+                start_date: r.start_date ?? "",
+                track_withdrawal: !!r.track_withdrawal,
+              });
+            }
+          });
+          setPrescriptionsList(pres);
+          setRecoveryList(nonPres);
+          if (pres.length > 0) setPrescribedToggle(true);
         }
 
         // placeholder previous check-ins
@@ -204,7 +235,8 @@ export default function ProfileSetup() {
     heightInches,
     calorieTarget,
     workoutDaysTarget,
-    prescribed,
+    prescribedToggle,
+    prescriptionsList,
     inRecovery,
     recoveryList,
     passcode,
@@ -225,7 +257,7 @@ export default function ProfileSetup() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
 
-  // mutation: save everything at once
+  // Save everything in one mutation
   const mutation = useMutation({
     mutationFn: async (payload: any) => {
       if (!user) throw new Error("No user");
@@ -275,24 +307,47 @@ export default function ProfileSetup() {
         }
       }
 
-      // upsert privacy_prefs (merge sensitive + analytics + prescribed)
+      // upsert privacy_prefs (merge sensitive + analytics)
       const { error: prefsErr } = await supabase.from("privacy_prefs").upsert(
-        { user_id: user.id, prescribed: payload.prescribed ?? false, ...payload.privacy_prefs, ...payload.analytics_prefs },
+        { user_id: user.id, ...payload.privacy_prefs, ...payload.analytics_prefs },
         { onConflict: "user_id" }
       );
       if (prefsErr) throw prefsErr;
 
-      // replace recovery_substances
+      // replace recovery_substances:
+      // Combine non-prescribed recoveryList and prescriptionsList (prescribed = true).
       const { error: deleteErr } = await supabase.from("recovery_substances").delete().eq("user_id", user.id);
       if (deleteErr) throw deleteErr;
 
+      const toInsert: any[] = [];
+
       if (payload.recovery_list && payload.recovery_list.length) {
-        const toInsert = payload.recovery_list.map((r: any) => ({
-          user_id: user.id,
-          name: r.name,
-          start_date: r.start_date || null,
-          track_withdrawal: r.track_withdrawal || false,
-        }));
+        payload.recovery_list.forEach((r: any) =>
+          toInsert.push({
+            user_id: user.id,
+            name: r.name,
+            start_date: r.start_date || null,
+            prescribed: false,
+            track_withdrawal: r.track_withdrawal || false,
+          })
+        );
+      }
+
+      if (payload.prescriptions_list && payload.prescriptions_list.length) {
+        payload.prescriptions_list.forEach((p: any) =>
+          toInsert.push({
+            user_id: user.id,
+            name: p.name,
+            start_date: p.start_date || null,
+            prescribed: true,
+            dosage: p.dosage || null,
+            frequency: p.frequency || null,
+            track_withdrawal: false,
+          })
+        );
+      }
+
+      if (toInsert.length) {
         const { error: insertErr } = await supabase.from("recovery_substances").insert(toInsert);
         if (insertErr) throw insertErr;
       }
@@ -310,10 +365,11 @@ export default function ProfileSetup() {
   });
 
   async function handleSaveProfile() {
-    if (!firstName.trim() || !lastName.trim() || prescribed === null) {
+    // basic validation: name + either prescriptions answered or not required
+    if (!firstName.trim() || !lastName.trim()) {
       toast({
         title: "Missing required answers",
-        description: "Please complete first name, last name and answer Prescribed.",
+        description: "Please complete first and last name.",
         variant: "destructive",
       });
       return;
@@ -338,8 +394,8 @@ export default function ProfileSetup() {
         privacy_prefs: sensitive,
         analytics_prefs: analytics,
         recovery_list: recoveryList,
+        prescriptions_list: prescribedToggle ? prescriptionsList : [],
         daily_checkin_time: dailyCheckinTime,
-        prescribed,
       });
 
       navigate("/today", { replace: true });
@@ -350,7 +406,18 @@ export default function ProfileSetup() {
     }
   }
 
-  // recovery helpers
+  // prescriptions helpers
+  function addPrescription() {
+    setPrescriptionsList((s) => [...s, { id: `${Date.now()}`, name: "", dosage: "", frequency: "", start_date: "" }]);
+  }
+  function updatePrescription(id: string, changes: Partial<any>) {
+    setPrescriptionsList((s) => s.map((p) => (p.id === id ? { ...p, ...changes } : p)));
+  }
+  function removePrescription(id: string) {
+    setPrescriptionsList((s) => s.filter((p) => p.id !== id));
+  }
+
+  // recovery helpers (non-prescribed)
   function addRecoveryItem() {
     setRecoveryList((s) => [...s, { id: `${Date.now()}`, name: "", start_date: "", track_withdrawal: false }]);
   }
@@ -513,25 +580,53 @@ export default function ProfileSetup() {
           </div>
         </section>
 
-        {/* Drug Use */}
+        {/* Drug Use / Prescriptions */}
         <section className="bg-white rounded-xl shadow p-6">
           <h3 className="text-xl font-semibold mb-4">Drug Use</h3>
 
           <div className="mb-4">
             <Label>Prescribed?</Label>
-            <div className="flex items-center gap-4 mt-2">
-              <label className="flex items-center gap-2">
-                <input type="radio" name="prescribed" checked={prescribed === true} onChange={() => setPrescribed(true)} />
-                <span>Yes</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="radio" name="prescribed" checked={prescribed === false} onChange={() => setPrescribed(false)} />
-                <span>No</span>
-              </label>
+            <div className="mt-2">
+              <Switch checked={prescribedToggle} onCheckedChange={(v) => setPrescribedToggle(Boolean(v))} />
             </div>
           </div>
 
-          <div className="mb-4">
+          {prescribedToggle && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold">Prescription drugs</h4>
+                <Button onClick={addPrescription} style={{ background: PBJ_PRIMARY, color: "white" }}>Add prescription</Button>
+              </div>
+
+              {prescriptionsList.map((p) => (
+                <div key={p.id} className="p-3 border rounded">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div>
+                      <Label>Prescription drug Name</Label>
+                      <Input value={p.name} onChange={(e) => updatePrescription(p.id, { name: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Dosage</Label>
+                      <Input value={p.dosage ?? ""} onChange={(e) => updatePrescription(p.id, { dosage: e.target.value })} placeholder="e.g. 10 mg" />
+                    </div>
+                    <div>
+                      <Label>Frequency taken</Label>
+                      <Input value={p.frequency ?? ""} onChange={(e) => updatePrescription(p.id, { frequency: e.target.value })} placeholder="e.g. once daily" />
+                    </div>
+                    <div>
+                      <Label>Start date</Label>
+                      <Input type="date" value={p.start_date ?? ""} onChange={(e) => updatePrescription(p.id, { start_date: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="mt-2 flex justify-end">
+                    <Button variant="ghost" onClick={() => removePrescription(p.id)}>Remove</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-6">
             <Label>In recovery?</Label>
             <div className="mt-2">
               <Switch checked={inRecovery} onCheckedChange={(v) => setInRecovery(Boolean(v))} />
@@ -539,7 +634,7 @@ export default function ProfileSetup() {
           </div>
 
           {inRecovery && (
-            <div className="space-y-4">
+            <div className="space-y-4 mt-4">
               {recoveryList.map((r) => (
                 <div key={r.id} className="p-3 border rounded">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -563,7 +658,6 @@ export default function ProfileSetup() {
                   </div>
                 </div>
               ))}
-
               <div>
                 <Button onClick={addRecoveryItem} style={{ background: PBJ_PRIMARY, color: "white" }}>
                   Add substance
