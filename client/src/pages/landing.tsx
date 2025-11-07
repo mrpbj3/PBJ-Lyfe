@@ -1,19 +1,18 @@
-// PBJ LYFE - Landing Page
+// PBJ LYFE - Landing Page (single CTA)
 import { Button } from '@/components/ui/button';
-import { Activity, TrendingDown, Moon, Dumbbell, Zap, Brain, Heart } from 'lucide-react';
-import { Link, useLocation } from 'wouter';
+import { Activity } from 'lucide-react';
+import { useLocation } from 'wouter';
 import { useAuth } from '@/auth/AuthProvider';
 
 export default function Landing() {
+  const { user, loading } = useAuth();
   const [, navigate] = useLocation();
-  const { user } = useAuth();
 
   const handleGetStarted = () => {
+    // If user already signed in, go to /today. Otherwise start server login flow.
     if (user) {
-      // Already signed in -> go straight to Today
       navigate('/today', { replace: true });
     } else {
-      // Not signed in -> start server login flow
       window.location.href = '/api/login';
     }
   };
@@ -32,26 +31,21 @@ export default function Landing() {
                 </h1>
               </div>
             </div>
+
             <p className="text-3xl font-semibold text-foreground max-w-3xl mx-auto">
               One simple daily flow to track your Lyfe.
             </p>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Track your health, build streaks, and achieve sustainable health goals with mental health & lifestyle insights.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
-              <Button
-                size="lg"
-                onClick={handleGetStarted}
-                className="min-w-[200px] text-lg h-14"
-                data-testid="button-login"
-              >
-                Get Started
-              </Button>
+
+            {/* Single CTA */}
+            <div className="pt-8">
               <Button
                 size="lg"
                 onClick={handleGetStarted}
                 className="min-w-[240px] text-lg h-14"
-                data-testid="button-login-cta"
+                data-testid="button-login"
               >
                 Get Started Free
               </Button>
@@ -60,14 +54,16 @@ export default function Landing() {
         </div>
       </div>
 
-      {/* Features Section (kept minimal for brevity) */}
+      {/* Features Section (kept minimal for readability) */}
       <div id="features" className="max-w-6xl mx-auto px-4 py-20">
         <div className="text-center mb-16">
           <h2 className="text-4xl font-bold">Everything You Need to Win Your Day</h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Missed a day? We'll help you restart. Your pace, your progress.
+            PBJ LYFE keeps it simple: one place to log, learn, and level up—without the noise.
           </p>
         </div>
+
+        {/* (feature cards unchanged) */}
       </div>
 
       {/* Footer */}
