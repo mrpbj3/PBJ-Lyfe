@@ -47,7 +47,7 @@ export default function Landing() {
                 className="min-w-[240px] text-lg h-14"
                 data-testid="button-login"
               >
-                Get Started Free
+                Get Started For Free
               </Button>
             </div>
           </div>
