@@ -345,6 +345,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // PROFILE DETAILED
+  app.get("/api/profile-detailed", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const profile = await storage.getProfileDetailed(userId);
+      res.json(profile);
+    } catch (error) {
+      console.error("Error fetching profile detailed:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  app.put("/api/profile-detailed", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const result = await storage.updateProfileDetailed(userId, req.body);
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // CHECK-INS
+  app.get("/api/check-ins", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const checkIns = await storage.getCheckIns(userId, limit);
+      res.json(checkIns);
+    } catch (error) {
+      console.error("Error fetching check-ins:", error);
+      res.status(500).json({ message: "Failed to fetch check-ins" });
+    }
+  });
+
+  app.post("/api/check-ins", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { date, weight, notes } = req.body;
+      if (!date || !weight) {
+        return res.status(400).json({ message: "date and weight required" });
+      }
+      const checkIn = await storage.createCheckIn(userId, date, weight, notes);
+      res.json(checkIn);
+    } catch (error) {
+      console.error("Error creating check-in:", error);
+      res.status(500).json({ message: "Failed to create check-in" });
+    }
+  });
+  
   // GOALS
   app.get("/api/goals", isAuthenticated, async (req: any, res: Response) => {
     try {
