@@ -25,13 +25,16 @@ async function ensureBootstrap(u: User) {
   // This allows the app to work even if Supabase tables aren't set up
   try {
     // 1) profiles (PK=id) - try to create if doesn't exist
-    await supabase.from('profiles').upsert(
+    const { error } = await supabase.from('profiles').upsert(
       { id: u.id, first_name: u.user_metadata?.first_name ?? null, last_name: u.user_metadata?.last_name ?? null },
       { onConflict: 'id' }
     );
+    if (error) {
+      console.log('Profile bootstrap skipped (table may not exist):', error.message);
+    }
   } catch (err) {
     // Silently ignore - table might not exist or have different schema
-    console.log('Profile bootstrap skipped:', err);
+    console.log('Profile bootstrap skipped (exception):', err);
   }
 }
 

@@ -43,13 +43,18 @@ interface Streaks {
 }
 
 export default function Today() {
-  const { user, loading: isLoading, isAuthenticated } = useAuth();
+  const { user, loading: isLoading, isAuthenticated, signOut } = useAuth();
   const { toast } = useToast();
   const today = getTodayISO();
   const [showWizard, setShowWizard] = useState(false);
 
   // RequireAuth component already handles authentication
   // No need for additional redirect logic here
+  
+  const handleLogout = async () => {
+    await signOut();
+    window.location.href = '/';
+  };
 
   // Fetch today's analytics
   const { data: dailyAnalytics } = useQuery<DailyAnalytics>({
@@ -125,7 +130,7 @@ export default function Today() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => (window.location.href = '/api/logout')}
+              onClick={handleLogout}
               data-testid="button-logout"
             >
               <LogOut className="h-4 w-4 mr-2" />
