@@ -1,5 +1,5 @@
 // PBJ Health - Recovery & Substances Page
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/auth/AuthProvider';
 import { DashboardCard } from '@/components/DashboardCard';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';

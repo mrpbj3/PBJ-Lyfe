@@ -1,6 +1,6 @@
 // PBJ Health - Meditation Page
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/auth/AuthProvider';
 import { DashboardCard } from '@/components/DashboardCard';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';

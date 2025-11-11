@@ -1,7 +1,7 @@
 // PBJ Health - Today Dashboard
 // Main daily tracking screen with all health cards
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { DashboardCard } from '@/components/DashboardCard';
@@ -43,24 +43,13 @@ interface Streaks {
 }
 
 export default function Today() {
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { user, loading: isLoading, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const today = getTodayISO();
   const [showWizard, setShowWizard] = useState(false);
 
-  // Redirect unauthorized users
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: 'Unauthorized',
-        description: 'You are logged out. Logging in again...',
-        variant: 'destructive',
-      });
-      setTimeout(() => {
-        window.location.href = '/api/login';
-      }, 500);
-    }
-  }, [isAuthenticated, isLoading, toast]);
+  // RequireAuth component already handles authentication
+  // No need for additional redirect logic here
 
   // Fetch today's analytics
   const { data: dailyAnalytics } = useQuery<DailyAnalytics>({

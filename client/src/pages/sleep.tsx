@@ -1,6 +1,6 @@
 // PBJ Health - Sleep Logging Page
 import { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/auth/AuthProvider';
 import { DashboardCard } from '@/components/DashboardCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,7 +36,7 @@ export default function Sleep() {
           description: 'You are logged out. Logging in again...',
           variant: 'destructive',
         });
-        setTimeout(() => { window.location.href = '/api/login'; }, 500);
+        setTimeout(() => { window.location.href = '/login'; }, 500);
         return;
       }
       toast({ title: 'Error', description: error.message, variant: 'destructive' });

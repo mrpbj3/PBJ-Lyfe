@@ -1,6 +1,6 @@
 // PBJ Health - Weight Logging Page
 import { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/auth/AuthProvider';
 import { DashboardCard } from '@/components/DashboardCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
