@@ -39,7 +39,7 @@ export default function Login() {
           .eq("id", data.session.user.id)
           .maybeSingle();
         
-        navigate(profile && profile.first_name ? "/today" : "/profile/setup");
+        navigate(profile && profile.first_name ? "/today" : "/profile");
       }
     })();
   }, [navigate]);
@@ -62,7 +62,7 @@ export default function Login() {
       .eq("id", user.id)
       .maybeSingle();
 
-    navigate(profile && profile.first_name ? "/today" : "/profile/setup");
+    navigate(profile && profile.first_name ? "/today" : "/profile");
   }
 
   async function doSignUp() {

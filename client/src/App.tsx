@@ -29,7 +29,6 @@ import NotFound from "@/pages/not-found";
 // auth pages you added in /auth
 import Login from "@/pages/login";
 import AuthCallback from "@/auth/AuthCallback";
-import ProfileSetup from "@/pages/profile-setup";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -48,7 +47,6 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/login" component={Login} />
       <Route path="/auth/callback" component={AuthCallback} />
-      <Route path="/profile/setup" component={ProfileSetup} />
 
       {/* Protected (wrap with RequireAuth) */}
       <Route path="/today">

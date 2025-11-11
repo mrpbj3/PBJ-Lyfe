@@ -24,7 +24,7 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
           .maybeSingle();
 
         if (!profile || !profile.first_name) {
-          navigate('/profile/setup');
+          navigate('/profile');
         } else {
           setProfileComplete(true);
         }

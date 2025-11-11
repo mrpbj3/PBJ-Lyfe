@@ -40,7 +40,7 @@ export default function Login() {
       .eq("id", user.id)
       .maybeSingle();
 
-    navigate(profile && profile.first_name ? "/today" : "/profile/setup");
+    navigate(profile && profile.first_name ? "/today" : "/profile");
   }
 
   async function handleMagicLink() {

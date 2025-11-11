@@ -40,9 +40,9 @@ export default function AuthCallback() {
         .eq("id", user.id)
         .maybeSingle();
 
-      // If no profile yet or first_name not set, go to the onboarding/profile-setup page
+      // If no profile yet or first_name not set, go to the profile page
       if (!profile || !profile.first_name) {
-        navigate("/profile/setup", { replace: true });
+        navigate("/profile", { replace: true });
         return;
       }
 
