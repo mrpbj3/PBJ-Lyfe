@@ -36,11 +36,11 @@ export default function Login() {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id")
+      .select("id, first_name")
       .eq("id", user.id)
       .maybeSingle();
 
-    navigate(profile ? "/" : "/profile/setup");
+    navigate(profile && profile.first_name ? "/today" : "/profile/setup");
   }
 
   async function handleMagicLink() {

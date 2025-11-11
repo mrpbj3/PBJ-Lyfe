@@ -6,9 +6,18 @@ type Ctx = {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isLoading: boolean;
+  isAuthenticated: boolean;
   signOut: () => Promise<void>;
 };
-const AuthCtx = createContext<Ctx>({ user: null, session: null, loading: true, signOut: async () => {} });
+const AuthCtx = createContext<Ctx>({ 
+  user: null, 
+  session: null, 
+  loading: true, 
+  isLoading: true,
+  isAuthenticated: false,
+  signOut: async () => {} 
+});
 export const useAuth = () => useContext(AuthCtx);
 
 async function ensureBootstrap(u: User) {
@@ -83,6 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user: session?.user ?? null,
         session,
         loading,
+        isLoading: loading,
+        isAuthenticated: !!session?.user,
         signOut: async () => { await supabase.auth.signOut(); },
       }}
     >

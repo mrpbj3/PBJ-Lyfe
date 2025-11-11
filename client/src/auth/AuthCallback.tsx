@@ -9,7 +9,15 @@ export default function AuthCallback() {
   useEffect(() => {
     (async () => {
       // Finish the auth exchange for email links / OAuth
-      const { error } = await supabase.auth.exchangeCodeForSession();
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      
+      if (!code) {
+        navigate("/login", { replace: true });
+        return;
+      }
+      
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (error) {
         // Send them back to login with an error state in the hash
         navigate(`/#error=${encodeURIComponent(error.message)}`, { replace: true });
@@ -32,14 +40,14 @@ export default function AuthCallback() {
         .eq("id", user.id)
         .maybeSingle();
 
-      // If no profile yet, go to the onboarding/profile-setup page
-      if (!profile) {
+      // If no profile yet or first_name not set, go to the onboarding/profile-setup page
+      if (!profile || !profile.first_name) {
         navigate("/profile/setup", { replace: true });
         return;
       }
 
       // Otherwise, go to dashboard (Today)
-      navigate("/", { replace: true });
+      navigate("/today", { replace: true });
     })();
   }, [navigate]);
 

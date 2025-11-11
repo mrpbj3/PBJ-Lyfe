@@ -32,9 +32,17 @@ export default function Login() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.getSession();
-      if (data.session) navigate(from);
+      if (data.session?.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id, first_name")
+          .eq("id", data.session.user.id)
+          .maybeSingle();
+        
+        navigate(profile && profile.first_name ? "/today" : "/profile/setup");
+      }
     })();
-  }, [navigate, from]);
+  }, [navigate]);
 
   async function doSignIn() {
     setBusy(true);
@@ -43,7 +51,18 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
     setBusy(false);
     if (error) return setErr(error.message);
-    navigate(from);
+
+    // Check if profile is completed
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return navigate("/login");
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, first_name")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    navigate(profile && profile.first_name ? "/today" : "/profile/setup");
   }
 
   async function doSignUp() {
