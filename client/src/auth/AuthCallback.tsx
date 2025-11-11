@@ -34,25 +34,18 @@ export default function AuthCallback() {
         return;
       }
 
-      // Check if profile exists and is completed
-      // If table doesn't exist or there's an error, just go to /today
       try {
         const { data: profile, error } = await supabase
           .from("profiles")
-          .select("id, first_name")
+          .select("id")
           .eq("id", user.id)
           .maybeSingle();
 
-        // Only redirect to profile if we successfully found an incomplete profile
-        if (!error && profile && !profile.first_name) {
-          navigate("/profile", { replace: true });
-        } else {
-          // Default to /today for all other cases
-          navigate("/today", { replace: true });
-        }
+        // If profile exists in table, go to today
+        // If no profile or error, also go to today (lenient)
+        navigate("/today", { replace: true });
       } catch (err) {
-        // If there's any error checking profile, just go to /today
-        console.log('Profile check skipped:', err);
+        console.log('Profile check error:', err);
         navigate("/today", { replace: true });
       }
     })();

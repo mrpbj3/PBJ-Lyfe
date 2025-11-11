@@ -41,7 +41,7 @@ export default function Profile() {
       try {
         const { data: profile, error } = await supabase
           .from("profiles")
-          .select("id, first_name, last_name")
+          .select("id, first_name, last_name, calorie_target, step_goal")
           .eq("id", authUser.id)
           .maybeSingle();
         
@@ -51,11 +51,14 @@ export default function Profile() {
           setIsFirstTimeSetup(false);
           setFirstName(authUser.user_metadata?.first_name || '');
           setLastName(authUser.user_metadata?.last_name || '');
-        } else if (!profile || !profile.first_name) {
+        } else if (!profile) {
+          // No profile at all - show setup
           setIsFirstTimeSetup(true);
           setFirstName('');
           setLastName('');
         } else {
+          // Profile exists - always show editor, not setup
+          // Even if first_name is null, if profile row exists they're not a new user
           setIsFirstTimeSetup(false);
           setFirstName(profile.first_name || '');
           setLastName(profile.last_name || '');
