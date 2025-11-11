@@ -1,5 +1,5 @@
 // PBJ Health - Placeholder Page for remaining features
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/auth/AuthProvider';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'wouter';

@@ -1,6 +1,6 @@
 // PBJ Health - Main App (Supabase auth)
 // Routing with wouter
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
@@ -32,6 +32,7 @@ import AuthCallback from "@/auth/AuthCallback";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [location] = useLocation();
 
   if (isLoading) {
     return (
@@ -39,6 +40,11 @@ function Router() {
         <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     );
+  }
+
+  // Redirect authenticated users from landing page to today page
+  if (isAuthenticated && location === "/") {
+    return <Redirect to="/today" />;
   }
 
   return (
