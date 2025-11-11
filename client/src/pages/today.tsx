@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { DashboardCard } from '@/components/DashboardCard';
 import { StatusChip } from '@/components/StatusChip';
 import { EmptyState } from '@/components/EmptyState';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import HeaderMenu from '@/components/HeaderMenu';
 import { Button } from '@/components/ui/button';
 import { DailyCheckInWizard } from '@/components/DailyCheckInWizard';
 import {
@@ -22,7 +22,6 @@ import {
   Home,
   Coffee,
   Wind,
-  LogOut,
   Sparkles,
 } from 'lucide-react';
 import { getTodayISO } from '@/lib/dateUtils';
@@ -126,16 +125,7 @@ export default function Today() {
               <Sparkles className="h-4 w-4 mr-2" />
               Daily Check-In
             </Button>
-            <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              data-testid="button-logout"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Log Out
-            </Button>
+            <HeaderMenu />
           </div>
         </div>
       </header>
@@ -157,7 +147,10 @@ export default function Today() {
         {/* Lyfe Tracking - Quick Access Row */}
         <div className="mb-8">
           <h3 className="text-2xl font-semibold text-center mb-6">How's Lyfe?</h3>
-          <div className="grid grid-cols-7 gap-3">
+          <div className="grid grid-cols-5 md:grid-cols-10 gap-3">
+            <LifeButton icon={Moon} label="Sleep" href="/sleep" />
+            <LifeButton icon={Scale} label="Weight" href="/weight" />
+            <LifeButton icon={Utensils} label="Nutrition" href="/nutrition" />
             <LifeButton icon={Brain} label="Mental" href="/mental" />
             <LifeButton icon={Moon} label="Dreams" href="/dreams" />
             <LifeButton icon={Briefcase} label="Work" href="/work" />
@@ -264,12 +257,12 @@ export default function Today() {
             )}
           </DashboardCard>
 
-          {/* Calories Card */}
+          {/* Nutrition Card */}
           <DashboardCard
-            title="Calories & Meals"
+            title="Nutrition"
             description="Track your daily nutrition"
             actionLabel="Add Meal"
-            actionHref="/meals"
+            actionHref="/nutrition"
             testId="card-calories"
           >
             {dailyAnalytics?.calories ? (

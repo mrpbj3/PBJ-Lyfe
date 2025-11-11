@@ -1,122 +1,39 @@
 // PBJ Health - Streak Evaluator
-// Based on specification from documentation
-import { DateTime } from 'luxon';
+// Uses daily_summary table to calculate user streaks
+import { supabase } from "@/lib/supabase";
 
-type Tz = string;
+export async function calculateUserStreak(userId: string) {
+  const { data, error } = await supabase
+    .from("daily_summary")
+    .select("summary_date, calorie_ratio, sleep_hours, did_workout")
+    .eq("user_id", userId)
+    .order("summary_date", { ascending: false })
+    .limit(60);
 
-export type DailyInputs = {
-  tz: Tz;
-  dateISO: string;
-  kcalGoal: number;
-  meals: Array<{ calories: number }>;
-  sleepSessionsEndingToday: Array<{ startAt: string; endAt: string }>;
-  workouts: Array<{ startAt?: string; endAt?: string; durationMin?: number }>;
-};
+  if (error || !data) return { streak: 0, color: "red", msg: "No data." };
 
-export type DailyResult = {
-  dateISO: string;
-  sleepMin: number;
-  sleepOk: boolean;
-  kcalIntake: number;
-  kcalGoal: number;
-  kcalDelta: number;
-  kcalStatus: 'UN' | 'OV' | 'GOAL';
-  kcalOk: boolean;
-  gymOk: boolean;
-  gymStartAt?: string;
-  gymEndAt?: string;
-  gymDurationMin: number;
-  scoreSmall: 0 | 1 | 2 | 3;
-  color: 'green' | 'yellow' | 'red';
-  caloriesChip: string;
-  sleepChip: string;
-  gymChip: string;
-};
+  let streak = 0;
+  let last: "green" | "yellow" | "red" = "red";
 
-const fmtHM = (m: number) => {
-  const h = Math.floor(m / 60);
-  const mm = m % 60;
-  return `${h}h${String(mm).padStart(2, '0')}m`;
-};
+  for (const d of data) {
+    const score =
+      (d.calorie_ratio !== null && d.calorie_ratio <= 1 ? 1 : 0) +
+      (d.sleep_hours !== null && d.sleep_hours >= 6 ? 1 : 0) +
+      (d.did_workout ? 1 : 0);
+    const color = score === 3 ? "green" : score === 2 ? "yellow" : "red";
+    if (color === "red") break;
+    streak++;
+    last = color;
+  }
 
-export function evaluateDaily(inputs: DailyInputs): DailyResult {
-  const { tz, dateISO, kcalGoal } = inputs;
+  const msg =
+    last === "green"
+      ? `GREEN STREAK LENGTH: ${streak} DAYS. GOOD JOB! Congrats on another great day. Lets keep the streak going!`
+      : last === "yellow"
+      ? `STREAK LENGTH: ${streak} DAYS. GOOD JOB KEEPING THE STREAK ALIVE! LETS AIM FOR A GREAT DAY TOMORROW.`
+      : streak > 0
+      ? `RED STREAK LENGTH: ${streak} DAYS. You said "better." Time to mean it.`
+      : `RED STREAK LENGTH: 0 DAYS. AW MAN, we lost our streak! Lets try to get it back tomorrow`;
 
-  // Calculate calories
-  const kcalIntake = Math.max(
-    0,
-    Math.round(inputs.meals.reduce((s, m) => s + (m.calories || 0), 0))
-  );
-  const kcalDelta = kcalIntake - kcalGoal;
-  let kcalStatus: 'UN' | 'OV' | 'GOAL' =
-    kcalDelta < 0 ? 'UN' : kcalDelta > 0 ? 'OV' : 'GOAL';
-  const kcalOk = kcalIntake <= kcalGoal;
-
-  // Calculate sleep (sessions that END today)
-  const sleepMin = Math.round(
-    inputs.sleepSessionsEndingToday.reduce((sum, s) => {
-      const start = DateTime.fromISO(s.startAt).setZone(tz);
-      const end = DateTime.fromISO(s.endAt).setZone(tz);
-      return sum + Math.max(0, end.diff(start, 'minutes').minutes);
-    }, 0)
-  );
-  const sleepOk = sleepMin >= 360; // ≥ 6 hours
-
-  // Calculate gym duration
-  let gymDuration = 0;
-  let firstStart: DateTime | undefined;
-  let lastEnd: DateTime | undefined;
-  const dayStart = DateTime.fromISO(dateISO, { zone: tz }).startOf('day');
-  const dayEnd = dayStart.endOf('day');
-
-  inputs.workouts.forEach((w) => {
-    let mins = w.durationMin ?? 0;
-    const ws = w.startAt ? DateTime.fromISO(w.startAt).setZone(tz) : undefined;
-    const we = w.endAt ? DateTime.fromISO(w.endAt).setZone(tz) : undefined;
-
-    if (ws && we) {
-      const cs = ws < dayStart ? dayStart : ws;
-      const ce = we > dayEnd ? dayEnd : we;
-      mins = Math.max(0, ce.diff(cs, 'minutes').minutes);
-      firstStart = firstStart ? (ws < firstStart ? ws : firstStart) : ws;
-      lastEnd = lastEnd ? (we > lastEnd ? we : lastEnd) : we;
-    }
-    gymDuration += Math.round(Math.max(0, mins));
-  });
-
-  const gymOk = gymDuration > 0;
-
-  // Calculate score and color
-  const score = ((sleepOk ? 1 : 0) +
-    (kcalOk ? 1 : 0) +
-    (gymOk ? 1 : 0)) as 0 | 1 | 2 | 3;
-  const color: 'green' | 'yellow' | 'red' =
-    score === 3 ? 'green' : score === 2 ? 'yellow' : 'red';
-
-  // Format chips (exact format from spec)
-  const caloriesChip = `${kcalIntake}/${kcalGoal} ${kcalStatus} ${kcalDelta === 0 ? '0' : kcalDelta > 0 ? `+${kcalDelta}` : `${kcalDelta}`}`;
-  const sleepChip = `${fmtHM(sleepMin)} ${sleepOk ? '✅' : '❌'}`;
-  const gymChip = gymOk
-    ? `✅ ${fmtHM(gymDuration)}${firstStart && lastEnd ? ` (${firstStart.toFormat('t')}–${lastEnd.toFormat('t')})` : ''}`
-    : '❌';
-
-  return {
-    dateISO,
-    sleepMin,
-    sleepOk,
-    kcalIntake,
-    kcalGoal,
-    kcalDelta,
-    kcalStatus,
-    kcalOk,
-    gymOk,
-    gymStartAt: firstStart?.toISO(),
-    gymEndAt: lastEnd?.toISO(),
-    gymDurationMin: Math.round(gymDuration),
-    scoreSmall: score,
-    color,
-    caloriesChip,
-    sleepChip,
-    gymChip,
-  };
+  return { streak, color: last, msg };
 }

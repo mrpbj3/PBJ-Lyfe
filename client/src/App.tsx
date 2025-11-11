@@ -15,6 +15,7 @@ import Today from "@/pages/today";
 import Sleep from "@/pages/sleep";
 import Weight from "@/pages/weight";
 import Meals from "@/pages/meals";
+import Nutrition from "@/pages/nutrition";
 import Workouts from "@/pages/workouts";
 import Mental from "@/pages/mental";
 import Meditation from "@/pages/meditation";
@@ -24,6 +25,8 @@ import Social from "@/pages/social";
 import Hobbies from "@/pages/hobbies";
 import Recovery from "@/pages/recovery";
 import Profile from "@/pages/profile";
+import ProfileDetailed from "@/pages/profile-detailed";
+import Contact from "@/pages/contact";
 import NotFound from "@/pages/not-found";
 
 // auth pages you added in /auth
@@ -67,6 +70,9 @@ function Router() {
       <Route path="/meals">
         <RequireAuth><Meals /></RequireAuth>
       </Route>
+      <Route path="/nutrition">
+        <RequireAuth><Nutrition /></RequireAuth>
+      </Route>
       <Route path="/workouts">
         <RequireAuth><Workouts /></RequireAuth>
       </Route>
@@ -93,6 +99,12 @@ function Router() {
       </Route>
       <Route path="/profile">
         <RequireAuth><Profile /></RequireAuth>
+      </Route>
+      <Route path="/profile-detailed">
+        <RequireAuth><ProfileDetailed /></RequireAuth>
+      </Route>
+      <Route path="/contact">
+        <RequireAuth><Contact /></RequireAuth>
       </Route>
 
       {/* Redirect any unknown /api/login legacy calls to /login */}
