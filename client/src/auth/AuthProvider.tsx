@@ -21,20 +21,37 @@ const AuthCtx = createContext<Ctx>({
 export const useAuth = () => useContext(AuthCtx);
 
 async function ensureBootstrap(u: User) {
-  // Bootstrap function - silently fail if tables don't exist
-  // This allows the app to work even if Supabase tables aren't set up
-  try {
-    // 1) profiles (PK=id) - try to create if doesn't exist
-    const { error } = await supabase.from('profiles').upsert(
-      { id: u.id, first_name: u.user_metadata?.first_name ?? null, last_name: u.user_metadata?.last_name ?? null },
-      { onConflict: 'id' }
-    );
-    if (error) {
-      console.log('Profile bootstrap skipped (table may not exist):', error.message);
+  // Small delay to let Supabase session JWT settle
+  await new Promise((r) => setTimeout(r, 500));
+
+  const { data: existing, error: selError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", u.id)
+    .maybeSingle();
+
+  if (selError) {
+    console.error("Error checking existing profile:", selError);
+    return;
+  }
+
+  if (!existing) {
+    const { error: insError } = await supabase.from("profiles").insert({
+      id: u.id,
+      first_name: u.user_metadata?.first_name ?? null,
+      last_name: u.user_metadata?.last_name ?? null,
+      profile_color: "#AB13E6",
+      units_weight: "lb",
+      units_height: "ftin",
+      calorie_target: 1700,
+      in_recovery: false,
+    });
+
+    if (insError) {
+      console.error("Bootstrap insert failed:", insError.message);
+    } else {
+      console.log("Profile created successfully for user:", u.id);
     }
-  } catch (err) {
-    // Silently ignore - table might not exist or have different schema
-    console.log('Profile bootstrap skipped (exception):', err);
   }
 }
 
