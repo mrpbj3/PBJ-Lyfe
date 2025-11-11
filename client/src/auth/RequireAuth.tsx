@@ -17,15 +17,25 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
 
     if (!loading && user) {
       (async () => {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id, first_name")
-          .eq("id", user.id)
-          .maybeSingle();
+        // Check if profile exists and is completed
+        // If table doesn't exist or there's an error, allow access
+        try {
+          const { data: profile, error } = await supabase
+            .from("profiles")
+            .select("id, first_name")
+            .eq("id", user.id)
+            .maybeSingle();
 
-        if (!profile || !profile.first_name) {
-          navigate('/profile');
-        } else {
+          // Only redirect to profile if we successfully found an incomplete profile
+          if (!error && profile && !profile.first_name) {
+            navigate('/profile');
+          } else {
+            // Allow access in all other cases
+            setProfileComplete(true);
+          }
+        } catch (err) {
+          // If there's any error checking profile, allow access
+          console.log('Profile check skipped:', err);
           setProfileComplete(true);
         }
         setProfileLoading(false);

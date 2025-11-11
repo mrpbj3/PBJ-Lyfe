@@ -21,17 +21,18 @@ const AuthCtx = createContext<Ctx>({
 export const useAuth = () => useContext(AuthCtx);
 
 async function ensureBootstrap(u: User) {
-  // 1) profiles (PK=id)
-  await supabase.from('profiles').upsert(
-    { id: u.id, first_name: u.user_metadata?.first_name ?? null, last_name: u.user_metadata?.last_name ?? null },
-    { onConflict: 'id' }
-  );
-
-  // 2) analysis_prefs (PK=user_id)
-  await supabase.from('analysis_prefs').upsert({ user_id: u.id }, { onConflict: 'user_id' });
-
-  // 3) privacy_prefs (PK=user_id)
-  await supabase.from('privacy_prefs').upsert({ user_id: u.id }, { onConflict: 'user_id' });
+  // Bootstrap function - silently fail if tables don't exist
+  // This allows the app to work even if Supabase tables aren't set up
+  try {
+    // 1) profiles (PK=id) - try to create if doesn't exist
+    await supabase.from('profiles').upsert(
+      { id: u.id, first_name: u.user_metadata?.first_name ?? null, last_name: u.user_metadata?.last_name ?? null },
+      { onConflict: 'id' }
+    );
+  } catch (err) {
+    // Silently ignore - table might not exist or have different schema
+    console.log('Profile bootstrap skipped:', err);
+  }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

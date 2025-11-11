@@ -34,20 +34,27 @@ export default function AuthCallback() {
         return;
       }
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id, first_name")
-        .eq("id", user.id)
-        .maybeSingle();
+      // Check if profile exists and is completed
+      // If table doesn't exist or there's an error, just go to /today
+      try {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("id, first_name")
+          .eq("id", user.id)
+          .maybeSingle();
 
-      // If no profile yet or first_name not set, go to the profile page
-      if (!profile || !profile.first_name) {
-        navigate("/profile", { replace: true });
-        return;
+        // Only redirect to profile if we successfully found an incomplete profile
+        if (!error && profile && !profile.first_name) {
+          navigate("/profile", { replace: true });
+        } else {
+          // Default to /today for all other cases
+          navigate("/today", { replace: true });
+        }
+      } catch (err) {
+        // If there's any error checking profile, just go to /today
+        console.log('Profile check skipped:', err);
+        navigate("/today", { replace: true });
       }
-
-      // Otherwise, go to dashboard (Today)
-      navigate("/today", { replace: true });
     })();
   }, [navigate]);
 

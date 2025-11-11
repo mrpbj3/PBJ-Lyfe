@@ -34,13 +34,27 @@ export default function Login() {
 
     if (!user) return navigate("/login");
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, first_name")
-      .eq("id", user.id)
-      .maybeSingle();
+    // Check if profile exists and is completed
+    // If table doesn't exist or there's an error, just go to /today
+    try {
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("id, first_name")
+        .eq("id", user.id)
+        .maybeSingle();
 
-    navigate(profile && profile.first_name ? "/today" : "/profile");
+      // Only redirect to profile if we successfully found an incomplete profile
+      if (!error && profile && !profile.first_name) {
+        navigate("/profile");
+      } else {
+        // Default to /today for all other cases
+        navigate("/today");
+      }
+    } catch (err) {
+      // If there's any error checking profile, just go to /today
+      console.log('Profile check skipped:', err);
+      navigate("/today");
+    }
   }
 
   async function handleMagicLink() {

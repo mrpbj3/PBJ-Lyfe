@@ -39,13 +39,19 @@ export default function Profile() {
     
     (async () => {
       try {
-        const { data: profile } = await supabase
+        const { data: profile, error } = await supabase
           .from("profiles")
           .select("id, first_name, last_name")
           .eq("id", authUser.id)
           .maybeSingle();
         
-        if (!profile || !profile.first_name) {
+        // If there's an error (e.g., table doesn't exist), default to showing profile edit
+        if (error) {
+          console.log('Profile table check failed, showing profile view:', error);
+          setIsFirstTimeSetup(false);
+          setFirstName(authUser.user_metadata?.first_name || '');
+          setLastName(authUser.user_metadata?.last_name || '');
+        } else if (!profile || !profile.first_name) {
           setIsFirstTimeSetup(true);
           setFirstName('');
           setLastName('');
@@ -56,6 +62,10 @@ export default function Profile() {
         }
       } catch (err) {
         console.error('Error fetching profile:', err);
+        // On error, default to profile edit view
+        setIsFirstTimeSetup(false);
+        setFirstName(authUser.user_metadata?.first_name || '');
+        setLastName(authUser.user_metadata?.last_name || '');
       } finally {
         setProfileLoading(false);
       }
