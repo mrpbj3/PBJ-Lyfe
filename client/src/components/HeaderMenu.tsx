@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/auth/AuthProvider";
 import { LogOut, MessageCircle, Moon, Sun, User, Mail } from "lucide-react";
@@ -7,6 +8,7 @@ import { useTheme } from "@/hooks/use-theme";
 export default function HeaderMenu() {
   const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const [, navigate] = useLocation();
   const [profile, setProfile] = useState<any>(null);
   const [open, setOpen] = useState(false);
 
@@ -34,25 +36,25 @@ export default function HeaderMenu() {
       </button>
       {open && (
         <div className="absolute right-0 mt-2 w-56 bg-card border rounded-lg shadow-lg py-1 z-50">
-          <MenuItem icon={User} label="Profile" href="/profile-detailed" />
-          <MenuItem icon={MessageCircle} label="Contact Us" href="/contact" />
+          <MenuItem icon={User} label="Profile" onClick={() => { setOpen(false); navigate("/profile-detailed"); }} />
+          <MenuItem icon={MessageCircle} label="Contact Us" onClick={() => { setOpen(false); navigate("/contact"); }} />
           <MenuItem
             icon={theme === "light" ? Moon : Sun}
             label={theme === "light" ? "Dark Mode" : "Light Mode"}
-            onClick={toggleTheme}
+            onClick={() => { toggleTheme(); setOpen(false); }}
           />
           <div className="border-t my-1" />
-          <MenuItem icon={LogOut} label="Logout" onClick={signOut} />
+          <MenuItem icon={LogOut} label="Logout" onClick={() => { setOpen(false); signOut(); }} />
         </div>
       )}
     </div>
   );
 }
 
-function MenuItem({ icon: Icon, label, href, onClick }: any) {
+function MenuItem({ icon: Icon, label, onClick }: any) {
   return (
     <button
-      onClick={onClick ?? (() => (window.location.href = href))}
+      onClick={onClick}
       className="flex w-full items-center px-4 py-2 text-sm hover:bg-accent gap-2"
     >
       <Icon className="h-4 w-4" /> {label}

@@ -1,6 +1,7 @@
 // PBJ Health - Today Dashboard
 // Main daily tracking screen with all health cards
 import { useEffect, useState } from 'react';
+import { Link } from 'wouter';
 import { useAuth } from '@/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
@@ -312,14 +313,16 @@ export default function Today() {
 
 function LifeButton({ icon: Icon, label, href }: { icon: any; label: string; href: string }) {
   return (
-    <a href={href} data-testid={`link-${label.toLowerCase()}`}>
-      <Button
-        variant="outline"
-        className="w-full h-16 flex-col gap-1 hover-elevate"
-      >
-        <Icon className="h-4 w-4" />
-        <span className="text-xs font-medium">{label}</span>
-      </Button>
-    </a>
+    <Link href={href}>
+      <a data-testid={`link-${label.toLowerCase()}`}>
+        <Button
+          variant="outline"
+          className="w-full h-16 flex-col gap-1 hover-elevate"
+        >
+          <Icon className="h-4 w-4" />
+          <span className="text-xs font-medium">{label}</span>
+        </Button>
+      </a>
+    </Link>
   );
 }

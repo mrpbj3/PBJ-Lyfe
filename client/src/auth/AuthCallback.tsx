@@ -37,11 +37,17 @@ export default function AuthCallback() {
       try {
         const { data: profile, error } = await supabase
           .from("profiles")
-          .select("id")
+          .select("id, first_name")
           .eq("id", user.id)
           .maybeSingle();
 
-        // If profile exists in table, go to today
+        // If profile exists but first_name is not set, redirect to profile for setup
+        if (profile && !profile.first_name) {
+          navigate("/profile", { replace: true });
+          return;
+        }
+
+        // If profile exists with first_name, go to today
         // If no profile or error, also go to today (lenient)
         navigate("/today", { replace: true });
       } catch (err) {
