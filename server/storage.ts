@@ -67,6 +67,32 @@ create table if not exists social_logs (
   id text primary key, user_id text not null, date text not null, activity text not null, duration_min integer,
   foreign key(user_id) references users(id) on delete cascade
 );
+
+create table if not exists profiles (
+  user_id text primary key,
+  first_name text,
+  last_name text,
+  starting_weight real,
+  units_weight text default 'lbs',
+  starting_height_cm real,
+  units_height text default 'cm',
+  calorie_target integer default 2000,
+  sleep_target_minutes integer default 480,
+  workout_days_target integer default 3,
+  profile_color text default '#3b82f6',
+  updated_at text not null default (datetime('now')),
+  foreign key(user_id) references users(id) on delete cascade
+);
+
+create table if not exists check_ins (
+  id text primary key,
+  user_id text not null,
+  date text not null,
+  weight real,
+  notes text,
+  created_at text not null default (datetime('now')),
+  foreign key(user_id) references users(id) on delete cascade
+);
 `);
 
 // Migrate existing tables to add new columns
@@ -494,6 +520,123 @@ Respond ONLY with a valid JSON object in this exact format (no markdown, no expl
 }
 
 export async function getProfile(userId:string){ return { inRecovery: false }; }
+
+export async function getProfileDetailed(userId: string) {
+  ensureUser(userId);
+  const row = db.prepare(`
+    SELECT first_name, last_name, starting_weight, units_weight, 
+           starting_height_cm, units_height, calorie_target, 
+           sleep_target_minutes, workout_days_target, profile_color
+    FROM profiles 
+    WHERE user_id = ?
+  `).get(userId) as any;
+  
+  if (!row) {
+    return {
+      firstName: '',
+      lastName: '',
+      startingWeight: null,
+      unitsWeight: 'lbs',
+      startingHeightCm: null,
+      unitsHeight: 'cm',
+      calorieTarget: 2000,
+      sleepTargetMinutes: 480,
+      workoutDaysTarget: 3,
+      profileColor: '#3b82f6'
+    };
+  }
+  
+  return {
+    firstName: row.first_name,
+    lastName: row.last_name,
+    startingWeight: row.starting_weight,
+    unitsWeight: row.units_weight,
+    startingHeightCm: row.starting_height_cm,
+    unitsHeight: row.units_height,
+    calorieTarget: row.calorie_target,
+    sleepTargetMinutes: row.sleep_target_minutes,
+    workoutDaysTarget: row.workout_days_target,
+    profileColor: row.profile_color
+  };
+}
+
+export async function updateProfileDetailed(userId: string, data: any) {
+  ensureUser(userId);
+  
+  const stmt = db.prepare(`
+    INSERT INTO profiles (
+      user_id, first_name, last_name, starting_weight, units_weight,
+      starting_height_cm, units_height, calorie_target, sleep_target_minutes,
+      workout_days_target, profile_color, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(user_id) DO UPDATE SET
+      first_name = excluded.first_name,
+      last_name = excluded.last_name,
+      starting_weight = excluded.starting_weight,
+      units_weight = excluded.units_weight,
+      starting_height_cm = excluded.starting_height_cm,
+      units_height = excluded.units_height,
+      calorie_target = excluded.calorie_target,
+      sleep_target_minutes = excluded.sleep_target_minutes,
+      workout_days_target = excluded.workout_days_target,
+      profile_color = excluded.profile_color,
+      updated_at = datetime('now')
+  `);
+  
+  stmt.run(
+    userId,
+    data.firstName,
+    data.lastName,
+    data.startingWeight,
+    data.unitsWeight,
+    data.startingHeightCm,
+    data.unitsHeight,
+    data.calorieTarget,
+    data.sleepTargetMinutes,
+    data.workoutDaysTarget,
+    data.profileColor
+  );
+  
+  return { success: true };
+}
+
+export async function getCheckIns(userId: string, limit?: number) {
+  ensureUser(userId);
+  
+  let query = `
+    SELECT id, date, weight, notes, created_at
+    FROM check_ins
+    WHERE user_id = ?
+    ORDER BY date DESC
+  `;
+  
+  if (limit) {
+    query += ` LIMIT ?`;
+  }
+  
+  const stmt = db.prepare(query);
+  const rows = limit ? stmt.all(userId, limit) : stmt.all(userId);
+  
+  return rows.map((row: any) => ({
+    id: row.id,
+    date: row.date,
+    weight: row.weight,
+    notes: row.notes,
+    createdAt: row.created_at
+  }));
+}
+
+export async function createCheckIn(userId: string, date: string, weight: number, notes?: string) {
+  ensureUser(userId);
+  const id = Math.random().toString(36).substring(2, 15);
+  
+  db.prepare(`
+    INSERT INTO check_ins (id, user_id, date, weight, notes)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(id, userId, date, weight, notes || null);
+  
+  return { id, date, weight, notes };
+}
 
 export async function getGoals(userId: string) {
   ensureUser(userId);

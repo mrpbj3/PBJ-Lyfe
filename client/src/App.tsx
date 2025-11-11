@@ -24,13 +24,12 @@ import Social from "@/pages/social";
 import Hobbies from "@/pages/hobbies";
 import Recovery from "@/pages/recovery";
 import Profile from "@/pages/profile";
+import ProfileDetailed from "@/pages/profile-detailed";
 import NotFound from "@/pages/not-found";
 
 // auth pages you added in /auth
 import Login from "@/pages/login";
 import AuthCallback from "@/auth/AuthCallback";
-import Today from "@/pages/today";
-import ProfileSetup from "@/pages/profile-setup";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -89,6 +88,9 @@ function Router() {
       </Route>
       <Route path="/profile">
         <RequireAuth><Profile /></RequireAuth>
+      </Route>
+      <Route path="/profile-detailed">
+        <RequireAuth><ProfileDetailed /></RequireAuth>
       </Route>
 
       {/* Redirect any unknown /api/login legacy calls to /login */}
