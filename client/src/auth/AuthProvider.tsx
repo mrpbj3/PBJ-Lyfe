@@ -21,38 +21,9 @@ const AuthCtx = createContext<Ctx>({
 export const useAuth = () => useContext(AuthCtx);
 
 async function ensureBootstrap(u: User) {
-  // Small delay to let Supabase session JWT settle
-  await new Promise((r) => setTimeout(r, 500));
-
-  const { data: existing, error: selError } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("id", u.id)
-    .maybeSingle();
-
-  if (selError) {
-    console.error("Error checking existing profile:", selError);
-    return;
-  }
-
-  if (!existing) {
-    const { error: insError } = await supabase.from("profiles").insert({
-      id: u.id,
-      first_name: u.user_metadata?.first_name ?? null,
-      last_name: u.user_metadata?.last_name ?? null,
-      profile_color: "#AB13E6",
-      units_weight: "lb",
-      units_height: "ftin",
-      calorie_target: 1700,
-      in_recovery: false,
-    });
-
-    if (insError) {
-      console.error("Bootstrap insert failed:", insError.message);
-    } else {
-      console.log("Profile created successfully for user:", u.id);
-    }
-  }
+  const { error } = await supabase.rpc("create_profile", { _id: u.id });
+  if (error) console.error("create_profile RPC failed:", error.message);
+  else console.log("Profile created successfully for user:", u.id);
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
