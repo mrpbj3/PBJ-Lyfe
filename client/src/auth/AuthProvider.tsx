@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { useLocation } from 'wouter';
 
 type Ctx = {
   user: User | null;
@@ -29,6 +30,7 @@ async function ensureBootstrap(u: User) {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [, navigate] = useLocation();
 
   useEffect(() => {
     let mounted = true;
@@ -78,6 +80,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/landing');
+  };
+
   return (
     <AuthCtx.Provider
       value={{
@@ -86,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         isLoading: loading,
         isAuthenticated: !!session?.user,
-        signOut: async () => { await supabase.auth.signOut(); },
+        signOut: handleSignOut,
       }}
     >
       {children}
