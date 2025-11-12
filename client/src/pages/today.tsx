@@ -11,10 +11,10 @@ import { EmptyState } from '@/components/EmptyState';
 import HeaderMenu from '@/components/HeaderMenu';
 import { Button } from '@/components/ui/button';
 import { DailyCheckInWizard } from '@/components/DailyCheckInWizard';
-import { SleepChart } from '@/components/charts/SleepChart';
-import { WeightChart } from '@/components/charts/WeightChart';
-import { NutritionChart } from '@/components/charts/NutritionChart';
-import { WorkoutTable } from '@/components/charts/WorkoutTable';
+import { Sleep7d } from '@/components/charts/Sleep7d';
+import { Weight7d } from '@/components/charts/Weight7d';
+import { Nutrition7d } from '@/components/charts/Nutrition7d';
+import { Workouts7dTable } from '@/components/Workouts7dTable';
 import {
   Activity,
   Moon,
@@ -66,9 +66,9 @@ export default function Today() {
     enabled: isAuthenticated,
   });
 
-  // Fetch current streaks
-  const { data: streaks } = useQuery<Streaks>({
-    queryKey: ['/api/streaks/current'],
+  // Fetch current streak using new API
+  const { data: streakData } = useQuery({
+    queryKey: ['/api/streak/current'],
     enabled: isAuthenticated,
   });
 
@@ -101,8 +101,10 @@ export default function Today() {
     );
   }
 
-  const greenStreak = streaks?.greenDays || 0;
-  const onTrackStreak = streaks?.onTrackDays || 0;
+  // Map new streak API response
+  const streakCount = streakData?.count || 0;
+  const streakColor = streakData?.color || 'red';
+  const overall = streakData?.overall || 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -169,40 +171,42 @@ export default function Today() {
         {/* Streak Overview */}
         <div className="mb-8 p-8 rounded-xl border bg-card">
           <div className="text-center">
-            {greenStreak > 0 ? (
+            {streakColor === 'green' && streakCount > 0 ? (
               <>
                 <p className="text-5xl font-bold text-green-600 dark:text-green-400 mb-2">
-                  {greenStreak} {greenStreak === 1 ? 'Day' : 'Days'}
+                  {streakCount} {streakCount === 1 ? 'Day' : 'Days'}
                 </p>
                 <p className="text-xl font-semibold uppercase tracking-wide text-green-600 dark:text-green-400 mb-2">
                   GREEN STREAK
                 </p>
                 <p className="text-sm text-muted-foreground mb-3">
-                  You're doing great!
+                  GOOD JOB! Congrats on another great day. Let's keep the streak going!
                 </p>
-                <p className="text-base font-semibold text-yellow-600 dark:text-yellow-400">
-                  Overall Streak {greenStreak + onTrackStreak} {greenStreak + onTrackStreak === 1 ? 'Day' : 'Days'}
-                </p>
+                {overall > streakCount && (
+                  <p className="text-base font-semibold text-yellow-600 dark:text-yellow-400">
+                    Overall Streak {overall} {overall === 1 ? 'Day' : 'Days'}
+                  </p>
+                )}
               </>
-            ) : onTrackStreak > 0 ? (
+            ) : streakColor === 'yellow' && streakCount > 0 ? (
               <>
                 <p className="text-5xl font-bold text-yellow-600 dark:text-yellow-400 mb-2">
-                  {onTrackStreak} {onTrackStreak === 1 ? 'Day' : 'Days'}
+                  {streakCount} {streakCount === 1 ? 'Day' : 'Days'}
                 </p>
                 <p className="text-xl font-semibold uppercase tracking-wide text-yellow-600 dark:text-yellow-400 mb-2">
-                  ACTIVE STREAK
+                  STREAK LENGTH
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Don't even think about falling off. Look how far you've come!
+                  GOOD JOB KEEPING THE STREAK ALIVE! LET'S AIM FOR A GREAT DAY TOMORROW.
                 </p>
               </>
-            ) : (
+            ) : streakCount > 0 ? (
               <>
                 <p className="text-5xl font-bold text-red-600 dark:text-red-400 mb-2">
-                  0 Days
+                  {streakCount} {streakCount === 1 ? 'Day' : 'Days'}
                 </p>
                 <p className="text-xl font-semibold uppercase tracking-wide text-red-600 dark:text-red-400 mb-2">
-                  NO ACTIVE STREAK
+                  RED STREAK LENGTH
                 </p>
                 <p className="text-sm text-muted-foreground">
                   You said "better." Time to mean it.
@@ -218,108 +222,36 @@ export default function Today() {
           <DashboardCard
             title="Sleep"
             description="7-day sleep trend"
-            actionLabel="Log"
-            actionHref="/sleep"
             testId="card-sleep"
           >
-            {dailyAnalytics?.sleepHours ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <p className="text-3xl font-bold">{dailyAnalytics.sleepHours.toFixed(1)}h</p>
-                  <p className="text-sm text-muted-foreground">
-                    {dailyAnalytics.sleepHours >= 6 ? '✓ Goal met' : 'Need 6+ hours'}
-                  </p>
-                </div>
-                <SleepChart userId={user?.id || ''} targetHours={6} />
-              </div>
-            ) : (
-              <EmptyState
-                icon={Moon}
-                title="No sleep logged"
-                description="Track your sleep to build your streak"
-              />
-            )}
+            <Sleep7d userId={user?.id || ''} />
           </DashboardCard>
 
-          {/* Weigh-In Card */}
+          {/* Weight Card */}
           <DashboardCard
             title="Weight"
             description="7-day weight trend"
-            actionLabel="Log"
-            actionHref="/weight"
             testId="card-weight"
           >
-            {dailyAnalytics?.weight ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <p className="text-3xl font-bold">{Math.round(dailyAnalytics.weight)} lbs</p>
-                  <p className="text-sm text-muted-foreground">
-                    {dailyAnalytics.weight > 0 ? 'Logged today' : ''}
-                  </p>
-                </div>
-                <WeightChart userId={user?.id || ''} />
-              </div>
-            ) : (
-              <EmptyState
-                icon={Scale}
-                title="No weight logged today"
-                description="Log your morning weight for trend tracking"
-              />
-            )}
+            <Weight7d userId={user?.id || ''} />
           </DashboardCard>
 
           {/* Nutrition Card */}
           <DashboardCard
             title="Nutrition"
             description="7-day calorie trend"
-            actionLabel="Add Meal"
-            actionHref="/nutrition"
             testId="card-calories"
           >
-            {dailyAnalytics?.calories ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <p className="text-3xl font-bold">{dailyAnalytics.calories} cal</p>
-                  <p className="text-sm text-muted-foreground">
-                    {dailyAnalytics.scoreSmall >= 2 ? '✓ On track' : 'Keep logging meals'}
-                  </p>
-                </div>
-                <NutritionChart userId={user?.id || ''} targetCalories={dailyAnalytics.kcalGoal} />
-              </div>
-            ) : (
-              <EmptyState
-                icon={Utensils}
-                title="No meals logged"
-                description="Add your meals to track calories"
-              />
-            )}
+            <Nutrition7d userId={user?.id || ''} />
           </DashboardCard>
 
           {/* Workout Card */}
           <DashboardCard
             title="Workouts"
             description="7-day workout history"
-            actionLabel="Log"
-            actionHref="/workouts"
             testId="card-workout"
           >
-            {dailyAnalytics?.workouts ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <p className="text-3xl font-bold">✓ Logged</p>
-                  <p className="text-sm text-muted-foreground">
-                    {dailyAnalytics.workouts} {dailyAnalytics.workouts === 1 ? 'session' : 'sessions'} today
-                  </p>
-                </div>
-                <WorkoutTable userId={user?.id || ''} />
-              </div>
-            ) : (
-              <EmptyState
-                icon={Dumbbell}
-                title="No workout logged"
-                description="Check in when you start your workout"
-              />
-            )}
+            <Workouts7dTable userId={user?.id || ''} />
           </DashboardCard>
         </div>
       </div>
