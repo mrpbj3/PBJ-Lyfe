@@ -35,10 +35,11 @@ export default function AskMrPBJ() {
 
     setLoading(true);
     try {
-      const result = await apiRequest('POST', '/api/coach/analyze', {
+      const response = await apiRequest('POST', '/api/coach/analyze', {
         windowDays: windowDays || 7,
         question: customQuestion,
       });
+      const result = await response.json();
       
       const assistantMessage: Message = {
         role: "assistant",
