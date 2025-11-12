@@ -5,6 +5,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import * as storage from "./storage";
 import { supabase } from "./supabase";
 import OpenAI from "openai";
+import { getStreakFromDailySummary, type DailySummaryRow } from "./streakLogic";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Re-enable Replit Auth
@@ -422,85 +423,43 @@ Use your best nutritional knowledge to estimate reasonable values.`;
   });
 
   // STREAK - Get current streak based on real data
+  // Days with no data are treated as RED and break the streak
   app.get("/api/streak/current", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const today = new Date().toISOString().split('T')[0];
       
-      // Try to get data from daily_summary
+      // Pull last 120 days to ensure we have enough data for streak calculation
+      const since = new Date();
+      since.setDate(since.getDate() - 120);
+      const sinceISO = since.toISOString().split('T')[0];
+      
+      // Get data from daily_summary with all needed fields
       const { data: summaryData, error } = await supabase
         .from('daily_summary')
-        .select('summary_date, streak_color, calorie_ratio, sleep_hours, did_workout')
+        .select('summary_date, calories_total, calorie_target, sleep_hours, did_workout, streak_color')
         .eq('user_id', userId)
-        .lte('summary_date', today)
-        .order('summary_date', { ascending: false })
-        .limit(60);
+        .gte('summary_date', sinceISO)
+        .order('summary_date', { ascending: false });
 
       if (error) {
         console.error("Error fetching streak data:", error);
         return res.status(500).json({ message: "Failed to fetch streak data" });
       }
 
-      let daysData: any[] = summaryData || [];
-      
-      // If we have less than 3 rows, try to derive from v_checkin_answers_flat
-      if (daysData.length < 3) {
-        const { data: answersData, error: answersError } = await supabase
-          .from('v_checkin_answers_flat')
-          .select('for_date, section, key, value_text')
-          .eq('user_id', userId)
-          .lte('for_date', today)
-          .order('for_date', { ascending: false })
-          .limit(180); // 60 days * ~3 answers per day
+      // Map to DailySummaryRow format
+      const rows: DailySummaryRow[] = (summaryData || []).map((row: any) => ({
+        summary_date: row.summary_date,
+        calories_total: row.calories_total,
+        calorie_target: row.calorie_target,
+        sleep_hours: row.sleep_hours,
+        did_workout: row.did_workout,
+        streak_color: row.streak_color,
+      }));
 
-        if (!answersError && answersData) {
-          // Group by date
-          const byDate: any = {};
-          answersData.forEach((row: any) => {
-            if (!byDate[row.for_date]) {
-              byDate[row.for_date] = { summary_date: row.for_date };
-            }
-            if (row.section === 'Sleep' && row.key === 'hours') {
-              byDate[row.for_date].sleep_hours = parseFloat(row.value_text) || 0;
-            }
-            if (row.section === 'Nutrition' && row.key === 'calorie_ratio') {
-              byDate[row.for_date].calorie_ratio = parseFloat(row.value_text) || 0;
-            }
-            if (row.section === 'Workout' && row.key === 'did_workout') {
-              byDate[row.for_date].did_workout = row.value_text === 'true' || row.value_text === '1';
-            }
-          });
-          daysData = Object.values(byDate);
-        }
-      }
+      // Calculate streak using the new logic
+      const result = getStreakFromDailySummary(rows);
 
-      // Calculate streak color for each day if not present
-      daysData = daysData.map((day: any) => {
-        if (!day.streak_color) {
-          const score =
-            (day.calorie_ratio !== null && day.calorie_ratio <= 1.0 ? 1 : 0) +
-            (day.sleep_hours !== null && day.sleep_hours >= 6 ? 1 : 0) +
-            (day.did_workout ? 1 : 0);
-          day.streak_color = score === 3 ? 'green' : score === 2 ? 'yellow' : 'red';
-        }
-        return day;
-      });
-
-      // Calculate run-length from most recent backward
-      let count = 0;
-      let color: 'green' | 'yellow' | 'red' = 'red';
-      let overall = 0;
-
-      for (const day of daysData) {
-        if (day.streak_color === 'red') {
-          break;
-        }
-        count++;
-        overall++;
-        color = day.streak_color;
-      }
-
-      res.json({ count, color, overall });
+      res.json(result);
     } catch (error) {
       console.error("Error calculating streak:", error);
       res.status(500).json({ message: "Failed to calculate streak" });
