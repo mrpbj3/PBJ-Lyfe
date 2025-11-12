@@ -19,7 +19,7 @@ export function Weight7d({ userId }: Weight7dProps) {
       const { data } = await supabase
         .from('profiles')
         .select('units_weight')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .single();
       return data;
     },
