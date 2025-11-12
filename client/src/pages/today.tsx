@@ -139,16 +139,28 @@ export default function Today() {
       {/* Welcome Message */}
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold mb-2">
-            Welcome back, {user?.firstName || 'there'}!
-          </h2>
-          <p className="text-muted-foreground">
-            Today Date: {new Date().toLocaleDateString('en-US', { 
-              weekday: 'long',
-              month: 'long', 
-              day: 'numeric' 
-            })}
-          </p>
+          <div className="flex justify-between items-start">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">
+                Welcome back, {user?.firstName || 'User'}!
+              </h2>
+              <p className="text-muted-foreground">
+                Today Date: {new Date().toLocaleDateString('en-US', { 
+                  weekday: 'long',
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
+              </p>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => window.open('/api/health', '_blank')}
+              className="ml-4"
+            >
+              🏥 Health Check
+            </Button>
+          </div>
         </div>
 
         {/* Lyfe Tracking - Quick Access Row */}
