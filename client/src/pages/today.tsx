@@ -212,6 +212,18 @@ export default function Today() {
                   You said "better." Time to mean it.
                 </p>
               </>
+            ) : (
+              <>
+                <p className="text-5xl font-bold text-red-600 dark:text-red-400 mb-2">
+                  0 Days
+                </p>
+                <p className="text-xl font-semibold uppercase tracking-wide text-red-600 dark:text-red-400 mb-2">
+                  NO ACTIVE STREAK
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  You said "better." Time to mean it.
+                </p>
+              </>
             )}
           </div>
         </div>
