@@ -521,8 +521,8 @@ Use your best nutritional knowledge to estimate reasonable values.`;
       // Get profile for calorie target
       const { data: profile } = await supabase
         .from('profiles')
-        .select('calorie_target, sleep_target_minutes')
-        .eq('user_id', userId)
+        .select('calorie_target, sleep_target_minutes, units_weight')
+        .eq('id', userId)
         .single();
 
       const kcalTarget = profile?.calorie_target || 2000;
