@@ -4,6 +4,7 @@ import { createServer, type Server } from "http";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import * as storage from "./storage";
 import { supabase } from "./supabase";
+import OpenAI from "openai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Re-enable Replit Auth
@@ -112,6 +113,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching meals:", error);
       res.status(500).json({ message: "Failed to fetch meals" });
+    }
+  });
+
+  // MEALS AI - Calculate nutrition with OpenAI
+  app.post("/api/meals/ai-calc", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { description } = req.body;
+      
+      if (!description) {
+        return res.status(400).json({ message: "description required" });
+      }
+
+      const openaiKey = process.env.OPENAI_API_KEY;
+      if (!openaiKey) {
+        return res.status(503).json({ message: "OpenAI not configured" });
+      }
+
+      const openai = new OpenAI({ apiKey: openaiKey });
+      const model = process.env.OPENAI_MODEL_MEALS || "gpt-4o-mini";
+      const timeout = parseInt(process.env.OPENAI_TIMEOUT_MS || "30000");
+
+      const prompt = `You are a nutrition expert. Analyze this meal description and provide calorie and macronutrient estimates.
+
+Meal description: "${description}"
+
+Respond ONLY with a JSON object in this exact format (no markdown, no explanation):
+{"calories": number, "protein_g": number, "fat_g": number, "carbs_g": number}
+
+Use your best nutritional knowledge to estimate reasonable values.`;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      try {
+        const completion = await openai.chat.completions.create({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.3,
+          max_tokens: 150,
+        }, { signal: controller.signal as any });
+
+        clearTimeout(timeoutId);
+
+        const content = completion.choices[0]?.message?.content || "{}";
+        const parsed = JSON.parse(content.trim());
+
+        res.json({
+          calories: Math.round(parsed.calories || 0),
+          proteinG: Math.round(parsed.protein_g || 0),
+          fatG: Math.round(parsed.fat_g || 0),
+          carbsG: Math.round(parsed.carbs_g || 0),
+        });
+      } catch (aiError: any) {
+        clearTimeout(timeoutId);
+        if (aiError.name === 'AbortError') {
+          return res.status(504).json({ message: "AI request timeout" });
+        }
+        throw aiError;
+      }
+    } catch (error) {
+      console.error("Error calculating nutrition with AI:", error);
+      res.status(500).json({ message: "Failed to calculate nutrition" });
     }
   });
 
