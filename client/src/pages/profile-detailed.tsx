@@ -2,11 +2,17 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { useAuth } from "@/auth/AuthProvider";
+import { ArrowLeft } from "lucide-react";
+import { Link } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ProfileDetailed() {
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const { data: profile, refetch } = useQuery({
     queryKey: ["profile", user?.id],
@@ -36,50 +42,236 @@ export default function ProfileDetailed() {
   if (!profile) return <div className="p-8">Loading…</div>;
 
   const save = async () => {
-    await supabase.from("profiles").update(edit).eq("id", user?.id);
-    await refetch();
-    setEdit({});
+    try {
+      const { error } = await supabase.from("profiles").update(edit).eq("id", user?.id);
+      if (error) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+        return;
+      }
+      await refetch();
+      setEdit({});
+      toast({ title: "Success", description: "Profile updated successfully!" });
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to update profile", variant: "destructive" });
+    }
   };
 
   const labelFor = (d:string) =>
-    new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) + " Daily Check-In Results";
+    new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+
+  // Available color options
+  const colorOptions = [
+    { value: "#AB13E6", label: "PBJ Purple" },
+    { value: "#C38452", label: "PBJ Gold" },
+    { value: "#3B82F6", label: "Blue" },
+    { value: "#10B981", label: "Green" },
+    { value: "#F59E0B", label: "Orange" },
+    { value: "#EF4444", label: "Red" },
+    { value: "#8B5CF6", label: "Violet" },
+    { value: "#EC4899", label: "Pink" },
+  ];
+
+  const currentColor = edit.profile_color !== undefined ? edit.profile_color : profile.profile_color;
 
   return (
-    <div className="max-w-4xl mx-auto p-8 space-y-8">
-      <h1 className="text-2xl font-bold">Profile</h1>
+    <div className="min-h-screen bg-background">
+      <header className="border-b sticky top-0 bg-background/95 backdrop-blur z-50">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <Link href="/today">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Today
+            </Button>
+          </Link>
+        </div>
+      </header>
 
-      <div className="grid sm:grid-cols-2 gap-4">
-        <Input defaultValue={profile.first_name || ""} onChange={(e)=>setEdit((x:any)=>({...x, first_name:e.target.value}))} placeholder="First name"/>
-        <Input defaultValue={profile.last_name  || ""} onChange={(e)=>setEdit((x:any)=>({...x, last_name:e.target.value}))} placeholder="Last name"/>
-        <Input defaultValue={profile.units_weight || ""} onChange={(e)=>setEdit((x:any)=>({...x, units_weight:e.target.value}))} placeholder="Units (weight)"/>
-        <Input defaultValue={profile.units_height || ""} onChange={(e)=>setEdit((x:any)=>({...x, units_height:e.target.value}))} placeholder="Units (height)"/>
-        <Input defaultValue={profile.calorie_target || ""} onChange={(e)=>setEdit((x:any)=>({...x, calorie_target:+e.target.value}))} placeholder="Calorie target"/>
-        <Input defaultValue={profile.sleep_target_minutes || ""} onChange={(e)=>setEdit((x:any)=>({...x, sleep_target_minutes:+e.target.value}))} placeholder="Sleep target (min)"/>
-        <Input defaultValue={profile.workout_days_target || ""} onChange={(e)=>setEdit((x:any)=>({...x, workout_days_target:+e.target.value}))} placeholder="Workout days / wk"/>
-        <Input defaultValue={profile.profile_color || ""} onChange={(e)=>setEdit((x:any)=>({...x, profile_color:e.target.value}))} placeholder="Profile color hex"/>
-      </div>
-      <Button onClick={save} className="w-32">Save</Button>
+      <div className="max-w-4xl mx-auto p-8 space-y-8">
+        <h1 className="text-2xl font-bold">Detailed Profile</h1>
 
-      <h2 className="text-xl font-semibold mt-10">Recent Daily Check-Ins</h2>
-      <div className="border rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-accent">
-            <tr>
-              <th className="text-left p-2">For Date</th>
-              <th className="text-left p-2">Label</th>
-            </tr>
-          </thead>
-          <tbody>
-            {checkins?.map((c:any)=>(
-              <tr key={c.id} className="hover:bg-muted cursor-pointer" onClick={()=> window.location.href = `/checkins/${c.id}`}>
-                <td className="p-2">{c.for_date}</td>
-                <td className="p-2">{labelFor(c.for_date)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {/* SECTION 1: Profile Information */}
+        <div className="border rounded-lg p-6 space-y-6">
+          <h2 className="text-xl font-semibold mb-4">Profile Information</h2>
+          
+          <div className="space-y-4">
+            {/* Name */}
+            <div>
+              <Label htmlFor="name" className="text-base font-semibold">Name:</Label>
+              <div className="grid sm:grid-cols-2 gap-4 mt-2">
+                <Input 
+                  id="firstName"
+                  defaultValue={profile.first_name || ""} 
+                  onChange={(e)=>setEdit((x:any)=>({...x, first_name:e.target.value}))} 
+                  placeholder="First name"
+                />
+                <Input 
+                  id="lastName"
+                  defaultValue={profile.last_name || ""} 
+                  onChange={(e)=>setEdit((x:any)=>({...x, last_name:e.target.value}))} 
+                  placeholder="Last name"
+                />
+              </div>
+            </div>
+
+            {/* Weight */}
+            <div>
+              <Label htmlFor="weight" className="text-base font-semibold">Weight:</Label>
+              <div className="grid sm:grid-cols-2 gap-4 mt-2">
+                <Input 
+                  id="weight"
+                  type="number"
+                  step="0.1"
+                  defaultValue={profile.starting_weight || ""} 
+                  onChange={(e)=>setEdit((x:any)=>({...x, starting_weight:+e.target.value}))} 
+                  placeholder="Starting weight"
+                />
+                <Input 
+                  id="weightUnits"
+                  defaultValue={profile.units_weight || ""} 
+                  onChange={(e)=>setEdit((x:any)=>({...x, units_weight:e.target.value}))} 
+                  placeholder="Units (e.g., lbs, kg)"
+                />
+              </div>
+            </div>
+
+            {/* Height */}
+            <div>
+              <Label htmlFor="height" className="text-base font-semibold">Height:</Label>
+              <div className="grid sm:grid-cols-2 gap-4 mt-2">
+                <Input 
+                  id="height"
+                  type="number"
+                  step="0.1"
+                  defaultValue={profile.starting_height_cm || ""} 
+                  onChange={(e)=>setEdit((x:any)=>({...x, starting_height_cm:+e.target.value}))} 
+                  placeholder="Starting height"
+                />
+                <Input 
+                  id="heightUnits"
+                  defaultValue={profile.units_height || ""} 
+                  onChange={(e)=>setEdit((x:any)=>({...x, units_height:e.target.value}))} 
+                  placeholder="Units (e.g., cm, in)"
+                />
+              </div>
+            </div>
+
+            {/* Calorie Target */}
+            <div>
+              <Label htmlFor="calorieTarget" className="text-base font-semibold">Calorie Target:</Label>
+              <Input 
+                id="calorieTarget"
+                type="number"
+                className="mt-2"
+                defaultValue={profile.calorie_target || ""} 
+                onChange={(e)=>setEdit((x:any)=>({...x, calorie_target:+e.target.value}))} 
+                placeholder="Daily calorie target"
+              />
+            </div>
+
+            {/* Sleep Goal */}
+            <div>
+              <Label htmlFor="sleepGoal" className="text-base font-semibold">Sleep Goal:</Label>
+              <Input 
+                id="sleepGoal"
+                type="number"
+                className="mt-2"
+                defaultValue={profile.sleep_target_minutes || ""} 
+                onChange={(e)=>setEdit((x:any)=>({...x, sleep_target_minutes:+e.target.value}))} 
+                placeholder="Sleep target (minutes)"
+              />
+            </div>
+
+            {/* Workout Goal */}
+            <div>
+              <Label htmlFor="workoutGoal" className="text-base font-semibold">Workout Goal:</Label>
+              <Input 
+                id="workoutGoal"
+                type="number"
+                className="mt-2"
+                defaultValue={profile.workout_days_target || ""} 
+                onChange={(e)=>setEdit((x:any)=>({...x, workout_days_target:+e.target.value}))} 
+                placeholder="Workout days per week"
+              />
+            </div>
+
+            {/* Profile Color */}
+            <div>
+              <Label htmlFor="profileColor" className="text-base font-semibold">Profile Color:</Label>
+              <div className="flex items-center gap-4 mt-2">
+                <Select 
+                  value={currentColor || "#AB13E6"} 
+                  onValueChange={(value) => setEdit((x:any)=>({...x, profile_color: value}))}
+                >
+                  <SelectTrigger className="w-full">
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-4 h-4 rounded-full border border-gray-300" 
+                        style={{ backgroundColor: currentColor || "#AB13E6" }}
+                      />
+                      <SelectValue placeholder="Select a color" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {colorOptions.map((color) => (
+                      <SelectItem key={color.value} value={color.value}>
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-4 h-4 rounded-full border border-gray-300" 
+                            style={{ backgroundColor: color.value }}
+                          />
+                          <span>{color.label}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <Button onClick={save} className="w-32 mt-6">Save</Button>
+        </div>
+
+        {/* SECTION 2: Recent Check-Ins */}
+        <div className="border rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">Recent Check-Ins</h2>
+          
+          {checkins && checkins.length > 0 ? (
+            <div className="border rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-accent">
+                  <tr>
+                    <th className="text-left p-3">Date</th>
+                    <th className="text-left p-3">Check-In</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {checkins.map((c:any)=>(
+                    <tr 
+                      key={c.id} 
+                      className="hover:bg-muted cursor-pointer border-t" 
+                      onClick={()=> window.location.href = `/checkins/${c.id}`}
+                    >
+                      <td className="p-3">{labelFor(c.for_date)}</td>
+                      <td className="p-3">Daily Check-In Results</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-muted-foreground">No check-ins found.</p>
+          )}
+          
+          <Button 
+            variant="outline" 
+            className="mt-4"
+            onClick={()=> window.location.href = "/checkins/all"}
+          >
+            View All
+          </Button>
+        </div>
       </div>
-      <Button variant="outline" onClick={()=> window.location.href = "/checkins/all"}>View All</Button>
     </div>
   );
 }
