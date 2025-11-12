@@ -17,7 +17,7 @@ export default function HeaderMenu() {
     supabase
       .from("profiles")
       .select("first_name,last_name,profile_color")
-      .eq("user_id", user.id)
+      .eq("id", user.id)
       .single()
       .then(({ data }) => setProfile(data || {}));
   }, [user]);
