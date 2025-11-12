@@ -110,7 +110,7 @@ describe('Streak Logic', () => {
   });
 
   describe('calculateStreak', () => {
-    it('Case 1: [green, green, yellow] → count 3, color yellow', () => {
+    it('Case 1: [green, green, yellow] → count 3, color green (most recent)', () => {
       const normalized = [
         { date: '2025-01-03', effectiveColor: 'green' as StreakColor },
         { date: '2025-01-02', effectiveColor: 'green' as StreakColor },
@@ -118,29 +118,45 @@ describe('Streak Logic', () => {
       ];
       const result = calculateStreak(normalized);
       expect(result.count).toBe(3);
-      expect(result.color).toBe('green'); // Most recent non-red color
+      expect(result.color).toBe('green'); // First element is most recent, so green
     });
 
-    it('Case 2: [red, green, green] → count 0, color red', () => {
+    it('Case 2: [red, green, green] → count 1, color red (clamped)', () => {
       const normalized = [
         { date: '2025-01-03', effectiveColor: 'red' as StreakColor },
         { date: '2025-01-02', effectiveColor: 'green' as StreakColor },
         { date: '2025-01-01', effectiveColor: 'green' as StreakColor },
       ];
       const result = calculateStreak(normalized);
-      expect(result.count).toBe(0);
+      expect(result.count).toBe(1); // Clamped to minimum 1
       expect(result.color).toBe('red');
     });
 
-    it('Case 3: [no-data→red, green, yellow] → count 0, color red', () => {
+    it('Case 3: [no-data→red, green, yellow] → count 1, color red (clamped)', () => {
       const normalized = [
         { date: '2025-01-03', effectiveColor: 'red' as StreakColor }, // no-data day
         { date: '2025-01-02', effectiveColor: 'green' as StreakColor },
         { date: '2025-01-01', effectiveColor: 'yellow' as StreakColor },
       ];
       const result = calculateStreak(normalized);
-      expect(result.count).toBe(0);
+      expect(result.count).toBe(1); // Clamped to minimum 1
       expect(result.color).toBe('red');
+    });
+
+    it('Case 5: [] (no rows) → count 1, color red', () => {
+      const normalized: Array<{ date: string; effectiveColor: StreakColor }> = [];
+      const result = calculateStreak(normalized);
+      expect(result.count).toBe(1); // Always at least 1
+      expect(result.color).toBe('red');
+    });
+
+    it('Case 6: [yellow] → count 1, color yellow', () => {
+      const normalized = [
+        { date: '2025-01-01', effectiveColor: 'yellow' as StreakColor },
+      ];
+      const result = calculateStreak(normalized);
+      expect(result.count).toBe(1);
+      expect(result.color).toBe('yellow');
     });
 
     it('Case 4: [yellow, yellow, red, green] → count 2, color yellow', () => {
@@ -177,7 +193,7 @@ describe('Streak Logic', () => {
       ];
       const result = getStreakFromDailySummary(rows);
       expect(result.count).toBe(2); // Only recent 2 days
-      expect(result.color).toBe('green');
+      expect(result.color).toBe('green'); // Most recent is green (first row)
     });
 
     it('should handle all green days', () => {

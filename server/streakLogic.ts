@@ -63,8 +63,14 @@ export function normalizeDays(rows: DailySummaryRow[]): NormalizedDay[] {
  * Calculates streak from normalized days
  * Walks from most recent → older until hitting a RED day
  * Returns count of consecutive non-red days and the most recent non-red color
+ * Minimum count is always 1 (never 0)
  */
 export function calculateStreak(normalized: NormalizedDay[]): StreakResult {
+  // Handle empty case - no rows at all
+  if (normalized.length === 0) {
+    return { count: 1, color: 'red' };
+  }
+
   let count = 0;
   let lastColor: StreakColor = 'red';
 
@@ -75,6 +81,9 @@ export function calculateStreak(normalized: NormalizedDay[]): StreakResult {
     count++;
     lastColor = day.effectiveColor;
   }
+
+  // Clamp count to minimum of 1 - streak can never be 0
+  count = Math.max(1, count);
 
   return { count, color: lastColor };
 }
