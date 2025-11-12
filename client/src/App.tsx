@@ -26,6 +26,7 @@ import Hobbies from "@/pages/hobbies";
 import Recovery from "@/pages/recovery";
 import Profile from "@/pages/profile";
 import ProfileDetailed from "@/pages/profile-detailed";
+import AskMrPBJ from "@/pages/ask-mr-pbj";
 import Contact from "@/pages/contact";
 import NotFound from "@/pages/not-found";
 
@@ -102,6 +103,9 @@ function Router() {
       </Route>
       <Route path="/profile-detailed">
         <RequireAuth><ProfileDetailed /></RequireAuth>
+      </Route>
+      <Route path="/ask-mr-pbj">
+        <RequireAuth><AskMrPBJ /></RequireAuth>
       </Route>
       <Route path="/contact">
         <RequireAuth><Contact /></RequireAuth>

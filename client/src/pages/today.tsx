@@ -11,6 +11,10 @@ import { EmptyState } from '@/components/EmptyState';
 import HeaderMenu from '@/components/HeaderMenu';
 import { Button } from '@/components/ui/button';
 import { DailyCheckInWizard } from '@/components/DailyCheckInWizard';
+import { SleepChart } from '@/components/charts/SleepChart';
+import { WeightChart } from '@/components/charts/WeightChart';
+import { NutritionChart } from '@/components/charts/NutritionChart';
+import { WorkoutTable } from '@/components/charts/WorkoutTable';
 import {
   Activity,
   Moon,
@@ -213,17 +217,20 @@ export default function Today() {
           {/* Sleep Card */}
           <DashboardCard
             title="Sleep"
-            description="Log your sleep sessions"
+            description="7-day sleep trend"
             actionLabel="Log"
             actionHref="/sleep"
             testId="card-sleep"
           >
             {dailyAnalytics?.sleepHours ? (
-              <div className="space-y-2">
-                <p className="text-3xl font-bold">{dailyAnalytics.sleepHours.toFixed(1)}h</p>
-                <p className="text-sm text-muted-foreground">
-                  {dailyAnalytics.sleepHours >= 6 ? '✓ Goal met' : 'Need 6+ hours'}
-                </p>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-3xl font-bold">{dailyAnalytics.sleepHours.toFixed(1)}h</p>
+                  <p className="text-sm text-muted-foreground">
+                    {dailyAnalytics.sleepHours >= 6 ? '✓ Goal met' : 'Need 6+ hours'}
+                  </p>
+                </div>
+                <SleepChart userId={user?.id || ''} targetHours={6} />
               </div>
             ) : (
               <EmptyState
@@ -237,17 +244,20 @@ export default function Today() {
           {/* Weigh-In Card */}
           <DashboardCard
             title="Weight"
-            description="Track your body metrics"
+            description="7-day weight trend"
             actionLabel="Log"
             actionHref="/weight"
             testId="card-weight"
           >
             {dailyAnalytics?.weight ? (
-              <div className="space-y-2">
-                <p className="text-3xl font-bold">{Math.round(dailyAnalytics.weight)} lbs</p>
-                <p className="text-sm text-muted-foreground">
-                  {dailyAnalytics.weight > 0 ? 'Logged today' : ''}
-                </p>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-3xl font-bold">{Math.round(dailyAnalytics.weight)} lbs</p>
+                  <p className="text-sm text-muted-foreground">
+                    {dailyAnalytics.weight > 0 ? 'Logged today' : ''}
+                  </p>
+                </div>
+                <WeightChart userId={user?.id || ''} />
               </div>
             ) : (
               <EmptyState
@@ -261,17 +271,20 @@ export default function Today() {
           {/* Nutrition Card */}
           <DashboardCard
             title="Nutrition"
-            description="Track your daily nutrition"
+            description="7-day calorie trend"
             actionLabel="Add Meal"
             actionHref="/nutrition"
             testId="card-calories"
           >
             {dailyAnalytics?.calories ? (
-              <div className="space-y-2">
-                <p className="text-3xl font-bold">{dailyAnalytics.calories} cal</p>
-                <p className="text-sm text-muted-foreground">
-                  {dailyAnalytics.scoreSmall >= 2 ? '✓ On track' : 'Keep logging meals'}
-                </p>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-3xl font-bold">{dailyAnalytics.calories} cal</p>
+                  <p className="text-sm text-muted-foreground">
+                    {dailyAnalytics.scoreSmall >= 2 ? '✓ On track' : 'Keep logging meals'}
+                  </p>
+                </div>
+                <NutritionChart userId={user?.id || ''} targetCalories={dailyAnalytics.kcalGoal} />
               </div>
             ) : (
               <EmptyState
@@ -285,17 +298,20 @@ export default function Today() {
           {/* Workout Card */}
           <DashboardCard
             title="Workouts"
-            description="Log your exercise sessions"
+            description="7-day workout history"
             actionLabel="Log"
             actionHref="/workouts"
             testId="card-workout"
           >
             {dailyAnalytics?.workouts ? (
-              <div className="space-y-2">
-                <p className="text-3xl font-bold">✓ Logged</p>
-                <p className="text-sm text-muted-foreground">
-                  {dailyAnalytics.workouts} {dailyAnalytics.workouts === 1 ? 'session' : 'sessions'} today
-                </p>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-3xl font-bold">✓ Logged</p>
+                  <p className="text-sm text-muted-foreground">
+                    {dailyAnalytics.workouts} {dailyAnalytics.workouts === 1 ? 'session' : 'sessions'} today
+                  </p>
+                </div>
+                <WorkoutTable userId={user?.id || ''} />
               </div>
             ) : (
               <EmptyState
