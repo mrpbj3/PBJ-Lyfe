@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DashboardCard } from "@/components/DashboardCard";
 import { useState } from "react";
 import { useAuth } from "@/auth/AuthProvider";
 import { ArrowLeft } from "lucide-react";
@@ -61,8 +62,6 @@ export default function ProfileDetailed() {
 
   // Available color options
   const colorOptions = [
-    { value: "#AB13E6", label: "PBJ Purple" },
-    { value: "#C38452", label: "PBJ Gold" },
     { value: "#3B82F6", label: "Blue" },
     { value: "#10B981", label: "Green" },
     { value: "#F59E0B", label: "Orange" },
@@ -86,13 +85,11 @@ export default function ProfileDetailed() {
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto p-8 space-y-8">
-        <h1 className="text-2xl font-bold">Detailed Profile</h1>
+      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+        <h1 className="text-3xl font-bold mb-8">Detailed Profile</h1>
 
         {/* SECTION 1: Profile Information */}
-        <div className="border rounded-lg p-6 space-y-6">
-          <h2 className="text-xl font-semibold mb-4">Profile Information</h2>
-          
+        <DashboardCard title="Profile Information">
           <div className="space-y-4">
             {/* Name */}
             <div>
@@ -199,14 +196,14 @@ export default function ProfileDetailed() {
               <Label htmlFor="profileColor" className="text-base font-semibold">Profile Color:</Label>
               <div className="flex items-center gap-4 mt-2">
                 <Select 
-                  value={currentColor || "#AB13E6"} 
+                  value={currentColor || "#3B82F6"} 
                   onValueChange={(value) => setEdit((x:any)=>({...x, profile_color: value}))}
                 >
                   <SelectTrigger className="w-full">
                     <div className="flex items-center gap-2">
                       <div 
                         className="w-4 h-4 rounded-full border border-gray-300" 
-                        style={{ backgroundColor: currentColor || "#AB13E6" }}
+                        style={{ backgroundColor: currentColor || "#3B82F6" }}
                       />
                       <SelectValue placeholder="Select a color" />
                     </div>
@@ -229,13 +226,11 @@ export default function ProfileDetailed() {
             </div>
           </div>
 
-          <Button onClick={save} className="w-32 mt-6">Save</Button>
-        </div>
+          <Button onClick={save} className="mt-6">Save</Button>
+        </DashboardCard>
 
         {/* SECTION 2: Recent Check-Ins */}
-        <div className="border rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">Recent Check-Ins</h2>
-          
+        <DashboardCard title="Recent Check-Ins">
           {checkins && checkins.length > 0 ? (
             <div className="border rounded-lg overflow-hidden">
               <table className="w-full text-sm">
@@ -270,7 +265,7 @@ export default function ProfileDetailed() {
           >
             View All
           </Button>
-        </div>
+        </DashboardCard>
       </div>
     </div>
   );
