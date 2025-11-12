@@ -17,7 +17,7 @@ export default function HeaderMenu() {
     supabase
       .from("profiles")
       .select("first_name,last_name,profile_color")
-      .eq("id", user.id)
+      .eq("user_id", user.id)
       .single()
       .then(({ data }) => setProfile(data || {}));
   }, [user]);
@@ -37,7 +37,7 @@ export default function HeaderMenu() {
       {open && (
         <div className="absolute right-0 mt-2 w-56 bg-card border rounded-lg shadow-lg py-1 z-50">
           <MenuItem icon={User} label="Profile" onClick={() => { setOpen(false); navigate("/profile-detailed"); }} />
-          <MenuItem icon={MessageSquareText} label="Ask Mr. PBJ" onClick={() => { setOpen(false); navigate("/askmrpbj"); }} />
+          <MenuItem icon={MessageSquareText} label="Ask Mr. PBJ" onClick={() => { setOpen(false); navigate("/ask-mr-pbj"); }} />
           <MenuItem icon={MessageCircle} label="Contact Us" onClick={() => { setOpen(false); navigate("/contact"); }} />
           <MenuItem
             icon={theme === "light" ? Moon : Sun}

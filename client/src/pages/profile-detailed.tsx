@@ -18,7 +18,7 @@ export default function ProfileDetailed() {
   const { data: profile, refetch } = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("*").eq("id", user?.id).single();
+      const { data } = await supabase.from("profiles").select("*").eq("user_id", user?.id).single();
       return data;
     },
     enabled: !!user,
@@ -35,7 +35,7 @@ export default function ProfileDetailed() {
 
   const save = async () => {
     try {
-      const { error } = await supabase.from("profiles").update(edit).eq("id", user?.id);
+      const { error } = await supabase.from("profiles").update(edit).eq("user_id", user?.id);
       if (error) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
         return;
