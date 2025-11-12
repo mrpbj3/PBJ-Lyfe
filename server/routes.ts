@@ -839,11 +839,34 @@ Use your best nutritional knowledge to estimate reasonable values.`;
       const hasAuthHeader = !!req.headers.authorization;
 
       if (!userId) {
-        return res.status(401).json({ 
-          ok: false, 
-          hasAuthHeader,
-          error: "No user ID found" 
-        });
+        const html = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Health Check - PBJ-Lyfe</title>
+              <style>
+                body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; background: #0f1729; color: #e2e8f0; }
+                .container { background: #1e293b; border-radius: 8px; padding: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+                h1 { color: #AB13E6; margin-top: 0; }
+                .status { padding: 12px; border-radius: 6px; margin: 20px 0; font-weight: 600; }
+                .error { background: #991b1b; color: #fecaca; }
+                .back-btn { display: inline-block; padding: 10px 20px; background: #AB13E6; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px; }
+                .back-btn:hover { background: #8b0fc4; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <h1>🏥 Health Check</h1>
+                <div class="status error">
+                  ❌ Authentication Failed: No user ID found
+                </div>
+                <p><strong>Auth Header Present:</strong> ${hasAuthHeader ? 'Yes' : 'No'}</p>
+                <a href="/" class="back-btn">← Back to Today</a>
+              </div>
+            </body>
+          </html>
+        `;
+        return res.status(401).send(html);
       }
 
       // Get counts from various tables
@@ -861,24 +884,122 @@ Use your best nutritional knowledge to estimate reasonable values.`;
         supabase.from('workouts').select('*', { count: 'exact', head: true }).eq('user_id', userId).gte('workout_date', start).lte('workout_date', endDate)
       ]);
 
-      res.json({
-        ok: true,
-        hasAuthHeader,
-        userId,
-        counts: {
-          daily_summary: summaryCount.count || 0,
-          meals: mealsCount.count || 0,
-          sleep_sessions: sleepCount.count || 0,
-          workouts: workoutsCount.count || 0
-        },
-        dateRange: { start, end: endDate }
-      });
+      const counts = {
+        daily_summary: summaryCount.count || 0,
+        meals: mealsCount.count || 0,
+        sleep_sessions: sleepCount.count || 0,
+        workouts: workoutsCount.count || 0
+      };
+
+      const totalCount = Object.values(counts).reduce((a, b) => a + b, 0);
+      const statusClass = totalCount > 0 ? 'success' : 'warning';
+      const statusIcon = totalCount > 0 ? '✅' : '⚠️';
+      const statusText = totalCount > 0 ? 'System Healthy' : 'No Data Found';
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Health Check - PBJ-Lyfe</title>
+            <style>
+              body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; background: #0f1729; color: #e2e8f0; }
+              .container { background: #1e293b; border-radius: 8px; padding: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+              h1 { color: #AB13E6; margin-top: 0; }
+              .status { padding: 12px; border-radius: 6px; margin: 20px 0; font-weight: 600; }
+              .success { background: #166534; color: #bbf7d0; }
+              .warning { background: #854d0e; color: #fef08a; }
+              .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
+              .info-card { background: #334155; padding: 15px; border-radius: 6px; }
+              .info-card h3 { margin: 0 0 10px 0; font-size: 14px; color: #94a3b8; }
+              .info-card .value { font-size: 24px; font-weight: bold; color: #AB13E6; }
+              .back-btn { display: inline-block; padding: 10px 20px; background: #AB13E6; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px; }
+              .back-btn:hover { background: #8b0fc4; }
+              .detail { margin: 10px 0; }
+              .detail strong { color: #94a3b8; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>🏥 Health Check</h1>
+              <div class="status ${statusClass}">
+                ${statusIcon} ${statusText}
+              </div>
+              
+              <div class="detail">
+                <strong>Auth Status:</strong> ${hasAuthHeader ? '✅ Authenticated' : '❌ Not Authenticated'}
+              </div>
+              <div class="detail">
+                <strong>User ID:</strong> ${userId}
+              </div>
+              <div class="detail">
+                <strong>Date Range:</strong> ${start} to ${endDate} (Last 7 days)
+              </div>
+
+              <h2 style="margin-top: 30px; color: #AB13E6;">📊 Data Counts</h2>
+              <div class="info-grid">
+                <div class="info-card">
+                  <h3>Daily Summaries</h3>
+                  <div class="value">${counts.daily_summary}</div>
+                </div>
+                <div class="info-card">
+                  <h3>Meals</h3>
+                  <div class="value">${counts.meals}</div>
+                </div>
+                <div class="info-card">
+                  <h3>Sleep Sessions</h3>
+                  <div class="value">${counts.sleep_sessions}</div>
+                </div>
+                <div class="info-card">
+                  <h3>Workouts</h3>
+                  <div class="value">${counts.workouts}</div>
+                </div>
+              </div>
+
+              <div class="detail" style="margin-top: 20px;">
+                <strong>Total Records:</strong> ${totalCount}
+              </div>
+
+              ${totalCount === 0 ? '<p style="color: #fef08a; margin-top: 20px;">⚠️ No data found in the last 7 days. Check if data has been imported and RLS policies are configured correctly.</p>' : ''}
+
+              <a href="/" class="back-btn">← Back to Today</a>
+            </div>
+          </body>
+        </html>
+      `;
+
+      res.send(html);
     } catch (error) {
       console.error("Error in health check:", error);
-      res.status(500).json({ 
-        ok: false, 
-        error: error instanceof Error ? error.message : "Health check failed"
-      });
+      const errorMessage = error instanceof Error ? error.message : "Health check failed";
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Health Check Error - PBJ-Lyfe</title>
+            <style>
+              body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; background: #0f1729; color: #e2e8f0; }
+              .container { background: #1e293b; border-radius: 8px; padding: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+              h1 { color: #AB13E6; margin-top: 0; }
+              .status { padding: 12px; border-radius: 6px; margin: 20px 0; font-weight: 600; }
+              .error { background: #991b1b; color: #fecaca; }
+              .back-btn { display: inline-block; padding: 10px 20px; background: #AB13E6; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px; }
+              .back-btn:hover { background: #8b0fc4; }
+              pre { background: #334155; padding: 15px; border-radius: 6px; overflow-x: auto; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>🏥 Health Check</h1>
+              <div class="status error">
+                ❌ Error: ${errorMessage}
+              </div>
+              <pre>${error instanceof Error ? error.stack : 'Unknown error'}</pre>
+              <a href="/" class="back-btn">← Back to Today</a>
+            </div>
+          </body>
+        </html>
+      `;
+      res.status(500).send(html);
     }
   });
 

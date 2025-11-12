@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 import { useAuth } from '@/auth/AuthProvider';
+import { useProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { DashboardCard } from '@/components/DashboardCard';
@@ -48,6 +49,7 @@ interface Streaks {
 
 export default function Today() {
   const { user, loading: isLoading, isAuthenticated, signOut } = useAuth();
+  const { profile } = useProfile();
   const { toast } = useToast();
   const today = getTodayISO();
   const [showWizard, setShowWizard] = useState(false);
@@ -142,7 +144,7 @@ export default function Today() {
           <div className="flex justify-between items-start">
             <div>
               <h2 className="text-3xl font-bold mb-2">
-                Welcome back, {user?.firstName || 'User'}!
+                Welcome back, {profile?.first_name || 'there'}!
               </h2>
               <p className="text-muted-foreground">
                 Today Date: {new Date().toLocaleDateString('en-US', { 
