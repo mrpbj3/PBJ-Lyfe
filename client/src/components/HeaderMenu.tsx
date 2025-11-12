@@ -35,7 +35,7 @@ export default function HeaderMenu() {
             onClick={() => { toggleTheme(); setOpen(false); }}
           />
           <div className="border-t my-1" />
-          <MenuItem icon={LogOut} label="Logout" onClick={async () => { await signOut(); setOpen(false); }} />
+          <MenuItem icon={LogOut} label="Logout" onClick={async () => { setOpen(false); await signOut(); }} />
         </div>
       )}
     </div>
