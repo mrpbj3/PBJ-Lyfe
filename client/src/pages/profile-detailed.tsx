@@ -18,8 +18,37 @@ export default function ProfileDetailed() {
   const { data: profile, refetch } = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("*").eq("id", user?.id).single();
-      return data;
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", user?.id).single();
+      if (error) {
+        console.error("Profile fetch error:", error);
+        // Return safe defaults so UI still renders
+        return {
+          first_name: "",
+          last_name: "",
+          starting_weight: 0,
+          units_weight: "lbs",
+          starting_height_cm: 0,
+          units_height: "cm",
+          calorie_target: 2000,
+          sleep_target_minutes: 480,
+          workout_days_target: 3,
+          profile_color: "#3B82F6",
+          timezone: "America/New_York",
+          date_format: "MM/DD/YYYY"
+        };
+      }
+      // Apply safe defaults for any missing fields
+      return {
+        ...data,
+        units_weight: data?.units_weight || "lbs",
+        units_height: data?.units_height || "cm",
+        calorie_target: data?.calorie_target || 2000,
+        sleep_target_minutes: data?.sleep_target_minutes || 480,
+        workout_days_target: data?.workout_days_target || 3,
+        profile_color: data?.profile_color || "#3B82F6",
+        timezone: data?.timezone || "America/New_York",
+        date_format: data?.date_format || "MM/DD/YYYY"
+      };
     },
     enabled: !!user,
   });

@@ -19,10 +19,21 @@ export default function HeaderMenu() {
       .select("first_name,last_name,profile_color")
       .eq("id", user.id)
       .single()
-      .then(({ data }) => setProfile(data || {}));
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Profile fetch error:", error);
+          // Set safe defaults if profile fetch fails
+          setProfile({ first_name: "", last_name: "", profile_color: "#AB13E6" });
+        } else {
+          setProfile({
+            ...data,
+            profile_color: data?.profile_color || "#AB13E6"
+          });
+        }
+      });
   }, [user]);
 
-  const initials = `${profile?.first_name?.[0] ?? ""}${profile?.last_name?.[0] ?? ""}`.toUpperCase() || "JL";
+  const initials = `${profile?.first_name?.[0] ?? ""}${profile?.last_name?.[0] ?? ""}`.toUpperCase() || "U";
   const color = profile?.profile_color || "#AB13E6";
 
   return (
@@ -45,7 +56,7 @@ export default function HeaderMenu() {
             onClick={() => { toggleTheme(); setOpen(false); }}
           />
           <div className="border-t my-1" />
-          <MenuItem icon={LogOut} label="Logout" onClick={() => { setOpen(false); signOut(); }} />
+          <MenuItem icon={LogOut} label="Logout" onClick={async () => { await signOut(); setOpen(false); }} />
         </div>
       )}
     </div>

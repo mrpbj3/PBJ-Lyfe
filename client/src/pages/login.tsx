@@ -109,6 +109,19 @@ export default function Login() {
     setMsg("Magic link sent — check your email.");
   }
 
+  async function handlePasswordReset(email: string) {
+    if (!email) return setErr("Enter your email first.");
+    setBusy(true);
+    setMsg(null);
+    setErr(null);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    });
+    setBusy(false);
+    if (error) return setErr(error.message);
+    setMsg("Password reset email sent — check your inbox.");
+  }
+
   return (
     <div
       className="min-h-screen flex items-center justify-center p-6"
@@ -216,14 +229,24 @@ export default function Login() {
             {/* Actions */}
             <div className="pt-2 grid gap-2">
               {tab === "signin" ? (
-                <button
-                  onClick={doSignIn}
-                  disabled={busy}
-                  className="rounded-lg px-4 py-2 font-medium text-white disabled:opacity-60"
-                  style={{ background: PBJ.purple }}
-                >
-                  {busy ? "Signing in…" : "Sign in"}
-                </button>
+                <>
+                  <button
+                    onClick={doSignIn}
+                    disabled={busy}
+                    className="rounded-lg px-4 py-2 font-medium text-white disabled:opacity-60"
+                    style={{ background: PBJ.purple }}
+                  >
+                    {busy ? "Signing in…" : "Sign in"}
+                  </button>
+                  <button
+                    onClick={() => handlePasswordReset(email)}
+                    disabled={!email || busy}
+                    className="text-sm hover:underline mt-1 disabled:opacity-50"
+                    style={{ color: PBJ.purple }}
+                  >
+                    Forgot password?
+                  </button>
+                </>
               ) : (
                 <button
                   onClick={doSignUp}

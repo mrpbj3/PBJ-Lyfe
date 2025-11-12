@@ -110,6 +110,36 @@ TO authenticated
 USING (auth.uid() = user_id);
 ```
 
+### CRITICAL: Profiles Table RLS Policy
+
+**The profiles table uses `id` as the primary key (NOT `user_id`):**
+
+```sql
+-- Enable RLS on profiles
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Policy for users to read their own profile
+CREATE POLICY "Users can read own profile"
+ON public.profiles FOR SELECT
+TO authenticated
+USING (auth.uid() = id);
+
+-- Policy for users to update their own profile
+CREATE POLICY "Users can update own profile"
+ON public.profiles FOR UPDATE
+TO authenticated
+USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);
+
+-- Policy for users to insert their own profile (during signup)
+CREATE POLICY "Users can insert own profile"
+ON public.profiles FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid() = id);
+```
+
+**Important:** All code that queries the profiles table MUST use `.eq('id', user.id)` NOT `.eq('user_id', user.id)`
+
 ## Timezone Handling
 
 The application uses the user's browser timezone for date calculations. All `for_date` and `summary_date` fields should be stored in YYYY-MM-DD format without timezone information to avoid off-by-one errors.
