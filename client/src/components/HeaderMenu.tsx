@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/auth/AuthProvider";
-import { LogOut, MessageCircle, Moon, Sun, User, Mail } from "lucide-react";
+import { LogOut, MessageCircle, Moon, Sun, User, Mail, MessageSquareText } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 
 export default function HeaderMenu() {
@@ -37,6 +37,7 @@ export default function HeaderMenu() {
       {open && (
         <div className="absolute right-0 mt-2 w-56 bg-card border rounded-lg shadow-lg py-1 z-50">
           <MenuItem icon={User} label="Profile" onClick={() => { setOpen(false); navigate("/profile-detailed"); }} />
+          <MenuItem icon={MessageSquareText} label="Ask Mr. PBJ" onClick={() => { setOpen(false); navigate("/askmrpbj"); }} />
           <MenuItem icon={MessageCircle} label="Contact Us" onClick={() => { setOpen(false); navigate("/contact"); }} />
           <MenuItem
             icon={theme === "light" ? Moon : Sun}

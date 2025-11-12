@@ -27,6 +27,8 @@ import Recovery from "@/pages/recovery";
 import Profile from "@/pages/profile";
 import ProfileDetailed from "@/pages/profile-detailed";
 import AskMrPBJ from "@/pages/ask-mr-pbj";
+import CheckinsAll from "@/pages/checkins/all";
+import CheckinDetails from "@/pages/checkins/details";
 import Contact from "@/pages/contact";
 import NotFound from "@/pages/not-found";
 
@@ -106,6 +108,12 @@ function Router() {
       </Route>
       <Route path="/ask-mr-pbj">
         <RequireAuth><AskMrPBJ /></RequireAuth>
+      </Route>
+      <Route path="/checkins/all">
+        <RequireAuth><CheckinsAll /></RequireAuth>
+      </Route>
+      <Route path="/checkins/:date">
+        <RequireAuth><CheckinDetails /></RequireAuth>
       </Route>
       <Route path="/contact">
         <RequireAuth><Contact /></RequireAuth>

@@ -25,16 +25,7 @@ export default function ProfileDetailed() {
   });
 
   const { data: checkins } = useQuery({
-    queryKey: ["checkins", user?.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("daily_checkins")
-        .select("id, for_date, submitted_at")
-        .eq("user_id", user?.id)
-        .order("for_date", { ascending: false })
-        .limit(7);
-      return data || [];
-    },
+    queryKey: ["/api/checkins/recent", user?.id],
     enabled: !!user,
   });
 
@@ -245,10 +236,10 @@ export default function ProfileDetailed() {
                     <tr 
                       key={c.id} 
                       className="hover:bg-muted cursor-pointer border-t" 
-                      onClick={()=> window.location.href = `/checkins/${c.id}`}
+                      onClick={()=> window.location.href = `/checkins/${c.for_date}`}
                     >
                       <td className="p-3">{labelFor(c.for_date)}</td>
-                      <td className="p-3">Daily Check-In Results</td>
+                      <td className="p-3">{labelFor(c.for_date)} Daily Check-In Results</td>
                     </tr>
                   ))}
                 </tbody>
