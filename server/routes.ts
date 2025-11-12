@@ -832,6 +832,56 @@ Use your best nutritional knowledge to estimate reasonable values.`;
     }
   });
 
+  // Health check endpoint for debugging
+  app.get("/api/health", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const hasAuthHeader = !!req.headers.authorization;
+
+      if (!userId) {
+        return res.status(401).json({ 
+          ok: false, 
+          hasAuthHeader,
+          error: "No user ID found" 
+        });
+      }
+
+      // Get counts from various tables
+      const endDate = new Date().toISOString().split('T')[0];
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 7);
+      const start = startDate.toISOString().split('T')[0];
+
+      const supabase = await setupSupabaseServer(req);
+
+      const [summaryCount, mealsCount, sleepCount, workoutsCount] = await Promise.all([
+        supabase.from('daily_summary').select('*', { count: 'exact', head: true }).eq('user_id', userId).gte('summary_date', start).lte('summary_date', endDate),
+        supabase.from('meals').select('*', { count: 'exact', head: true }).eq('user_id', userId).gte('meal_date', start).lte('meal_date', endDate),
+        supabase.from('sleep_sessions').select('*', { count: 'exact', head: true }).eq('user_id', userId).gte('sleep_date', start).lte('sleep_date', endDate),
+        supabase.from('workouts').select('*', { count: 'exact', head: true }).eq('user_id', userId).gte('workout_date', start).lte('workout_date', endDate)
+      ]);
+
+      res.json({
+        ok: true,
+        hasAuthHeader,
+        userId,
+        counts: {
+          daily_summary: summaryCount.count || 0,
+          meals: mealsCount.count || 0,
+          sleep_sessions: sleepCount.count || 0,
+          workouts: workoutsCount.count || 0
+        },
+        dateRange: { start, end: endDate }
+      });
+    } catch (error) {
+      console.error("Error in health check:", error);
+      res.status(500).json({ 
+        ok: false, 
+        error: error instanceof Error ? error.message : "Health check failed"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
