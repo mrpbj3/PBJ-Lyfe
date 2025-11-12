@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { useAuth } from "@/auth/AuthProvider";      // <- from your provider
 import RequireAuth from "@/auth/RequireAuth";       // <- simple guard
+import { ProfileProvider } from "@/hooks/useProfile"; // <- profile context
 
 // pages
 import Landing from "@/pages/landing";
@@ -132,10 +133,12 @@ function Router() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <ProfileProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </ProfileProvider>
     </QueryClientProvider>
   );
 }

@@ -1,37 +1,16 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/auth/AuthProvider";
+import { useProfile } from "@/hooks/useProfile";
 import { LogOut, MessageCircle, Moon, Sun, User, Mail, MessageSquareText } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 
 export default function HeaderMenu() {
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
+  const { profile } = useProfile();
   const { theme, toggleTheme } = useTheme();
   const [, navigate] = useLocation();
-  const [profile, setProfile] = useState<any>(null);
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("profiles")
-      .select("first_name,last_name,profile_color")
-      .eq("id", user.id)
-      .single()
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("Profile fetch error:", error);
-          // Set safe defaults if profile fetch fails
-          setProfile({ first_name: "", last_name: "", profile_color: "#AB13E6" });
-        } else {
-          setProfile({
-            ...data,
-            profile_color: data?.profile_color || "#AB13E6"
-          });
-        }
-      });
-  }, [user]);
 
   const initials = `${profile?.first_name?.[0] ?? ""}${profile?.last_name?.[0] ?? ""}`.toUpperCase() || "U";
   const color = profile?.profile_color || "#AB13E6";
