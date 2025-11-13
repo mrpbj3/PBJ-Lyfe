@@ -6,8 +6,9 @@ import * as storage from "./storage";
 import { supabase } from "./supabase";
 import OpenAI from "openai";
 import { getStreakFromDailySummary, type DailySummaryRow } from "./streakLogic";
-import { getDailyAnalytics } from "./analytics";
+import { getDailyAnalytics, get7DayAnalytics } from "./analytics";
 import { getCurrentStreak } from "./streak";
+import { getHealthStatus } from "./health";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Re-enable Replit Auth
@@ -459,108 +460,7 @@ Use your best nutritional knowledge to estimate reasonable values.`;
   app.get("/api/analytics/7d", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 6);
-
-      const end = endDate.toISOString().split('T')[0];
-      const start = startDate.toISOString().split('T')[0];
-
-      // Get profile for calorie target
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('calorie_target, sleep_target_minutes, units_weight')
-        .eq('id', userId)
-        .single();
-
-      const kcalTarget = profile?.calorie_target || 2000;
-      const sleepTarget = (profile?.sleep_target_minutes || 360) / 60;
-
-      // Initialize result array with all dates
-      const result: any[] = [];
-      for (let d = new Date(start); d <= endDate; d.setDate(d.getDate() + 1)) {
-        const dateStr = d.toISOString().split('T')[0];
-        result.push({
-          date: dateStr,
-          sleepHours: null,
-          weightKg: null,
-          workoutMin: 0,
-          calories: 0,
-          kcalTarget,
-          sleepTarget
-        });
-      }
-
-      // Get sleep data
-      const { data: sleepData } = await supabase
-        .from('sleep_sessions')
-        .select('start_at, end_at, duration_min')
-        .eq('user_id', userId)
-        .gte('start_at', start)
-        .lte('start_at', end);
-
-      if (sleepData) {
-        sleepData.forEach((session: any) => {
-          const sleepDate = session.start_at.split('T')[0];
-          const dayData = result.find(d => d.date === sleepDate);
-          if (dayData) {
-            dayData.sleepHours = (dayData.sleepHours || 0) + (session.duration_min / 60);
-          }
-        });
-      }
-
-      // Get weight data
-      const { data: weightData } = await supabase
-        .from('body_metrics')
-        .select('date, weight_kg')
-        .eq('user_id', userId)
-        .gte('date', start)
-        .lte('date', end)
-        .order('date', { ascending: true });
-
-      if (weightData) {
-        weightData.forEach((metric: any) => {
-          const dayData = result.find(d => d.date === metric.date);
-          if (dayData) {
-            dayData.weightKg = metric.weight_kg;
-          }
-        });
-      }
-
-      // Get workout data
-      const { data: workoutData } = await supabase
-        .from('workouts')
-        .select('date, duration_min')
-        .eq('user_id', userId)
-        .gte('date', start)
-        .lte('date', end);
-
-      if (workoutData) {
-        workoutData.forEach((workout: any) => {
-          const dayData = result.find(d => d.date === workout.date);
-          if (dayData) {
-            dayData.workoutMin += workout.duration_min || 0;
-          }
-        });
-      }
-
-      // Get nutrition data
-      const { data: mealsData } = await supabase
-        .from('meals')
-        .select('date, calories')
-        .eq('user_id', userId)
-        .gte('date', start)
-        .lte('date', end);
-
-      if (mealsData) {
-        mealsData.forEach((meal: any) => {
-          const dayData = result.find(d => d.date === meal.date);
-          if (dayData) {
-            dayData.calories += meal.calories || 0;
-          }
-        });
-      }
-
+      const result = await get7DayAnalytics(userId);
       res.json(result);
     } catch (error) {
       console.error("Error fetching 7d analytics:", error);

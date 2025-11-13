@@ -11,9 +11,22 @@ export interface CurrentStreakResult {
 /**
  * Get current streak for a user based on their daily summary data
  * Returns the active streak count, color, and overall streak count
+ * Returns mock data if Supabase is not configured
  */
 export async function getCurrentStreak(userId: string): Promise<CurrentStreakResult> {
   try {
+    // Check if Supabase is configured
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+    if (!supabaseUrl) {
+      console.log("Supabase not configured, returning mock streak data");
+      // Return mock data
+      return {
+        count: 3,
+        color: 'green',
+        overall: 5,
+      };
+    }
+
     // Pull last 120 days to ensure we have enough data for streak calculation
     const since = new Date();
     since.setDate(since.getDate() - 120);
