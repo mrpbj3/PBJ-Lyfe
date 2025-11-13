@@ -9,12 +9,20 @@ if (!supabaseUrl || !supabaseServiceKey) {
   console.warn('Supabase URL or key not configured. Supabase features will be disabled.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-});
+// Only create client if configured
+export const supabase = (supabaseUrl && supabaseServiceKey) 
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+  : createClient('https://placeholder.supabase.co', 'placeholder-key', {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
 
 // Helper to get user-scoped supabase client
 export function getUserSupabase(userId: string) {

@@ -31,6 +31,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { getTodayISO } from '@/lib/dateUtils';
+import { apiClient } from '@/lib/apiClient';
 
 interface DailyAnalytics {
   date: string;
@@ -64,13 +65,15 @@ export default function Today() {
 
   // Fetch today's analytics
   const { data: dailyAnalytics } = useQuery<DailyAnalytics>({
-    queryKey: ['/api/analytics/daily', today],
+    queryKey: ['analytics', 'daily', today],
+    queryFn: () => apiClient(`/api/analytics/daily?date=${today}`),
     enabled: isAuthenticated,
   });
 
   // Fetch current streak using new API
   const { data: streakData } = useQuery({
-    queryKey: ['/api/streak/current'],
+    queryKey: ['streak', 'current'],
+    queryFn: () => apiClient('/api/streak/current'),
     enabled: isAuthenticated,
   });
 

@@ -6,6 +6,11 @@ import * as storage from "./storage";
 import { supabase } from "./supabase";
 import OpenAI from "openai";
 import { getStreakFromDailySummary, type DailySummaryRow } from "./streakLogic";
+import { getDailyAnalytics, get7DayAnalytics } from "./analytics";
+import { getCurrentStreak } from "./streak";
+import { getHealthStatus } from "./health";
+import { getProfile } from "./profile";
+import { getRecentCheckins } from "./checkins";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Re-enable Replit Auth
@@ -219,6 +224,24 @@ Use your best nutritional knowledge to estimate reasonable values.`;
     }
   });
 
+  // ANALYTICS - Query param version for Today page
+  app.get("/api/analytics/daily", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const date = req.query.date as string;
+      
+      if (!date) {
+        return res.status(400).json({ message: "date query parameter required" });
+      }
+      
+      const analytics = await getDailyAnalytics(userId, date);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching daily analytics:", error);
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
   app.get("/api/analytics/history/:days", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
@@ -402,8 +425,28 @@ Use your best nutritional knowledge to estimate reasonable values.`;
   app.get("/api/profile", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const profile = await storage.getProfile(userId);
-      res.json(profile || { inRecovery: false });
+      const profile = await getProfile(userId);
+      
+      // Return safe defaults if profile not found
+      if (!profile) {
+        return res.json({
+          id: userId,
+          first_name: "",
+          last_name: "",
+          starting_weight: 0,
+          units_weight: "lbs",
+          starting_height_cm: 0,
+          units_height: "cm",
+          calorie_target: 2000,
+          sleep_target_minutes: 480,
+          workout_days_target: 3,
+          profile_color: "#3B82F6",
+          timezone: "America/New_York",
+          date_format: "MM/DD/YYYY"
+        });
+      }
+      
+      res.json(profile);
     } catch (error) {
       console.error("Error fetching profile:", error);
       res.status(500).json({ message: "Failed to fetch profile" });
@@ -427,38 +470,7 @@ Use your best nutritional knowledge to estimate reasonable values.`;
   app.get("/api/streak/current", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      
-      // Pull last 120 days to ensure we have enough data for streak calculation
-      const since = new Date();
-      since.setDate(since.getDate() - 120);
-      const sinceISO = since.toISOString().split('T')[0];
-      
-      // Get data from daily_summary with all needed fields
-      const { data: summaryData, error } = await supabase
-        .from('daily_summary')
-        .select('summary_date, calories_total, calorie_target, sleep_hours, did_workout, streak_color')
-        .eq('user_id', userId)
-        .gte('summary_date', sinceISO)
-        .order('summary_date', { ascending: false });
-
-      if (error) {
-        console.error("Error fetching streak data:", error);
-        return res.status(500).json({ message: "Failed to fetch streak data" });
-      }
-
-      // Map to DailySummaryRow format
-      const rows: DailySummaryRow[] = (summaryData || []).map((row: any) => ({
-        summary_date: row.summary_date,
-        calories_total: row.calories_total,
-        calorie_target: row.calorie_target,
-        sleep_hours: row.sleep_hours,
-        did_workout: row.did_workout,
-        streak_color: row.streak_color,
-      }));
-
-      // Calculate streak using the new logic
-      const result = getStreakFromDailySummary(rows);
-
+      const result = await getCurrentStreak(userId);
       res.json(result);
     } catch (error) {
       console.error("Error calculating streak:", error);
@@ -470,108 +482,7 @@ Use your best nutritional knowledge to estimate reasonable values.`;
   app.get("/api/analytics/7d", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 6);
-
-      const end = endDate.toISOString().split('T')[0];
-      const start = startDate.toISOString().split('T')[0];
-
-      // Get profile for calorie target
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('calorie_target, sleep_target_minutes, units_weight')
-        .eq('id', userId)
-        .single();
-
-      const kcalTarget = profile?.calorie_target || 2000;
-      const sleepTarget = (profile?.sleep_target_minutes || 360) / 60;
-
-      // Initialize result array with all dates
-      const result: any[] = [];
-      for (let d = new Date(start); d <= endDate; d.setDate(d.getDate() + 1)) {
-        const dateStr = d.toISOString().split('T')[0];
-        result.push({
-          date: dateStr,
-          sleepHours: null,
-          weightKg: null,
-          workoutMin: 0,
-          calories: 0,
-          kcalTarget,
-          sleepTarget
-        });
-      }
-
-      // Get sleep data
-      const { data: sleepData } = await supabase
-        .from('sleep_sessions')
-        .select('start_at, end_at, duration_min')
-        .eq('user_id', userId)
-        .gte('start_at', start)
-        .lte('start_at', end);
-
-      if (sleepData) {
-        sleepData.forEach((session: any) => {
-          const sleepDate = session.start_at.split('T')[0];
-          const dayData = result.find(d => d.date === sleepDate);
-          if (dayData) {
-            dayData.sleepHours = (dayData.sleepHours || 0) + (session.duration_min / 60);
-          }
-        });
-      }
-
-      // Get weight data
-      const { data: weightData } = await supabase
-        .from('body_metrics')
-        .select('date, weight_kg')
-        .eq('user_id', userId)
-        .gte('date', start)
-        .lte('date', end)
-        .order('date', { ascending: true });
-
-      if (weightData) {
-        weightData.forEach((metric: any) => {
-          const dayData = result.find(d => d.date === metric.date);
-          if (dayData) {
-            dayData.weightKg = metric.weight_kg;
-          }
-        });
-      }
-
-      // Get workout data
-      const { data: workoutData } = await supabase
-        .from('workouts')
-        .select('date, duration_min')
-        .eq('user_id', userId)
-        .gte('date', start)
-        .lte('date', end);
-
-      if (workoutData) {
-        workoutData.forEach((workout: any) => {
-          const dayData = result.find(d => d.date === workout.date);
-          if (dayData) {
-            dayData.workoutMin += workout.duration_min || 0;
-          }
-        });
-      }
-
-      // Get nutrition data
-      const { data: mealsData } = await supabase
-        .from('meals')
-        .select('date, calories')
-        .eq('user_id', userId)
-        .gte('date', start)
-        .lte('date', end);
-
-      if (mealsData) {
-        mealsData.forEach((meal: any) => {
-          const dayData = result.find(d => d.date === meal.date);
-          if (dayData) {
-            dayData.calories += meal.calories || 0;
-          }
-        });
-      }
-
+      const result = await get7DayAnalytics(userId);
       res.json(result);
     } catch (error) {
       console.error("Error fetching 7d analytics:", error);
@@ -583,14 +494,9 @@ Use your best nutritional knowledge to estimate reasonable values.`;
   app.get("/api/checkins/recent", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const limit = parseInt(req.query.limit as string) || 7;
-
-      const { data, error } = await supabase
-        .from('daily_checkins')
-        .select('id, for_date')
-        .eq('user_id', userId)
-        .order('for_date', { ascending: false })
-        .limit(limit);
+      const limit = parseInt(req.query.limit as string) || 10;
+      
+      const { data, error } = await getRecentCheckins(userId, limit);
 
       if (error) {
         console.error("Error fetching recent checkins:", error);
