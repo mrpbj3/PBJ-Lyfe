@@ -1,24 +1,30 @@
-// lib/supabase/client.ts
-"use client";
 
-import { createBrowserClient } from "@supabase/ssr";
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
-// We MUST expose public URL + anon key or Supabase client won't initialize.
-// These must be defined in Vercel as NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY.
-
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ??
-  (() => {
-    console.warn("⚠️ Missing NEXT_PUBLIC_SUPABASE_URL — using fallback localhost.");
-    return "http://localhost:54321";
-  })();
-
-const supabaseAnonKey =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-  (() => {
-    console.warn("⚠️ Missing NEXT_PUBLIC_SUPABASE_ANON_KEY — using fallback dummy key.");
-    return "anon-test-key-not-secure";
-  })();
-
-// This is the only correct client for the browser.
-export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+export const createServerSupabaseClient = () => {
+  const cookieStore = cookies();
+  
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || "http://localhost:54321",
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "dummy-key-for-build",
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // The `setAll` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+      },
+    }
+  );
+};
