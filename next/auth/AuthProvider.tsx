@@ -1,21 +1,21 @@
 "use client";
 
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-} from "react";
-import {
-  createBrowserClient,
-  type SupabaseClient,
-  type Session,
-  type User,
-} from "@supabase/ssr";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-// ----------- CONTEXT TYPES -------------
+// Supabase SSR client creator
+import { createBrowserClient } from "@supabase/ssr";
+
+// Types come from supabase-js
+import type { Session, User, SupabaseClient } from "@supabase/supabase-js";
+
+// ---- Create a browser Supabase client ----
+const supabase: SupabaseClient = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+// ---- Context Type ----
 type AuthContextType = {
   user: User | null;
   session: Session | null;
@@ -36,81 +36,65 @@ const AuthCtx = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthCtx);
 
-// ----------- SUPABASE CLIENT (BROWSER) -------------
-function getClient(): SupabaseClient {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-}
-
-// ----------- AUTOMATIC PROFILE CREATION -------------
-async function ensureBootstrap(user: User) {
+// ---- Ensure Profile Bootstrap ----
+async function ensureProfile(user: User) {
   try {
-    const supabase = getClient();
     const { error } = await supabase.rpc("create_profile", { _id: user.id });
-    if (error) console.warn("Profile bootstrap failed:", error.message);
-  } catch (e) {
-    console.error("bootstrap error:", e);
+    if (error) console.error("Profile creation RPC failed:", error);
+    else console.log("Profile ensured:", user.id);
+  } catch (err) {
+    console.error("Profile bootstrap error:", err);
   }
 }
 
-// ----------- PROVIDER IMPLEMENTATION -------------
-export function AuthProvider({ children }: { children: ReactNode }) {
+// ---- Provider ----
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
-  const [supabase] = useState(() => getClient());
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // -------------------------------------------------
-  // RESTORE SESSION ON PAGE LOAD (SSR + CSR SUPPORT)
-  // -------------------------------------------------
+  // INITIAL SESSION LOAD
   useEffect(() => {
-    let active = true;
+    let mounted = true;
 
-    async function init() {
+    (async () => {
       try {
         const { data } = await supabase.auth.getSession();
-        if (!active) return;
+        if (!mounted) return;
 
         setSession(data.session ?? null);
 
         if (data.session?.user) {
-          ensureBootstrap(data.session.user);
+          await ensureProfile(data.session.user);
         }
+      } catch (err) {
+        console.error("Error loading session:", err);
       } finally {
-        if (active) setLoading(false);
+        if (mounted) setLoading(false);
       }
-    }
+    })();
 
-    init();
-
-    // -------------------------------------------------
-    // LISTEN FOR AUTH CHANGES
-    // -------------------------------------------------
-    const { data: subscription } = supabase.auth.onAuthStateChange(
+    // AUTH STATE CHANGES (login, logout, refresh)
+    const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, newSession) => {
         setSession(newSession ?? null);
-
         if (newSession?.user) {
-          ensureBootstrap(newSession.user);
+          await ensureProfile(newSession.user);
         }
       }
     );
 
     return () => {
-      active = false;
-      subscription.subscription.unsubscribe();
+      mounted = false;
+      listener?.subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, []);
 
-  // -------------------------------------------------
-  // SIGN OUT
-  // -------------------------------------------------
-  const signOut = async () => {
+  // Sign Out
+  const handleSignOut = async () => {
     await supabase.auth.signOut();
-    router.push("/");
+    router.push("/login");
   };
 
   const value: AuthContextType = {
@@ -119,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     isLoading: loading,
     isAuthenticated: !!session?.user,
-    signOut,
+    signOut: handleSignOut,
   };
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
