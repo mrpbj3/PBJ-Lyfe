@@ -9,6 +9,8 @@ import { getStreakFromDailySummary, type DailySummaryRow } from "./streakLogic";
 import { getDailyAnalytics, get7DayAnalytics } from "./analytics";
 import { getCurrentStreak } from "./streak";
 import { getHealthStatus } from "./health";
+import { getProfile } from "./profile";
+import { getRecentCheckins } from "./checkins";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Re-enable Replit Auth
@@ -423,8 +425,28 @@ Use your best nutritional knowledge to estimate reasonable values.`;
   app.get("/api/profile", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const profile = await storage.getProfile(userId);
-      res.json(profile || { inRecovery: false });
+      const profile = await getProfile(userId);
+      
+      // Return safe defaults if profile not found
+      if (!profile) {
+        return res.json({
+          id: userId,
+          first_name: "",
+          last_name: "",
+          starting_weight: 0,
+          units_weight: "lbs",
+          starting_height_cm: 0,
+          units_height: "cm",
+          calorie_target: 2000,
+          sleep_target_minutes: 480,
+          workout_days_target: 3,
+          profile_color: "#3B82F6",
+          timezone: "America/New_York",
+          date_format: "MM/DD/YYYY"
+        });
+      }
+      
+      res.json(profile);
     } catch (error) {
       console.error("Error fetching profile:", error);
       res.status(500).json({ message: "Failed to fetch profile" });
@@ -472,14 +494,9 @@ Use your best nutritional knowledge to estimate reasonable values.`;
   app.get("/api/checkins/recent", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const limit = parseInt(req.query.limit as string) || 7;
-
-      const { data, error } = await supabase
-        .from('daily_checkins')
-        .select('id, for_date')
-        .eq('user_id', userId)
-        .order('for_date', { ascending: false })
-        .limit(limit);
+      const limit = parseInt(req.query.limit as string) || 10;
+      
+      const { data, error } = await getRecentCheckins(userId, limit);
 
       if (error) {
         console.error("Error fetching recent checkins:", error);
