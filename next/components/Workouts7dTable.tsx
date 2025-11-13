@@ -1,4 +1,5 @@
-// components/Workouts7dTable.tsx
+"use client";
+
 import { useSevenDay } from '@/hooks/useSevenDay';
 import { formatDuration } from '@/lib/units';
 
@@ -17,7 +18,6 @@ export function Workouts7dTable({ userId }: Workouts7dTableProps) {
     return <div className="text-sm text-muted-foreground">No workout data available</div>;
   }
 
-  // Filter to only show days with workouts
   const workoutDays = data.filter(d => d.workoutMin > 0);
 
   if (workoutDays.length === 0) {
