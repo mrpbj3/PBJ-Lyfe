@@ -6,6 +6,8 @@ import * as storage from "./storage";
 import { supabase } from "./supabase";
 import OpenAI from "openai";
 import { getStreakFromDailySummary, type DailySummaryRow } from "./streakLogic";
+import { getDailyAnalytics } from "./analytics";
+import { getCurrentStreak } from "./streak";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Re-enable Replit Auth
@@ -219,6 +221,24 @@ Use your best nutritional knowledge to estimate reasonable values.`;
     }
   });
 
+  // ANALYTICS - Query param version for Today page
+  app.get("/api/analytics/daily", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const date = req.query.date as string;
+      
+      if (!date) {
+        return res.status(400).json({ message: "date query parameter required" });
+      }
+      
+      const analytics = await getDailyAnalytics(userId, date);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching daily analytics:", error);
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
   app.get("/api/analytics/history/:days", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
@@ -427,38 +447,7 @@ Use your best nutritional knowledge to estimate reasonable values.`;
   app.get("/api/streak/current", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      
-      // Pull last 120 days to ensure we have enough data for streak calculation
-      const since = new Date();
-      since.setDate(since.getDate() - 120);
-      const sinceISO = since.toISOString().split('T')[0];
-      
-      // Get data from daily_summary with all needed fields
-      const { data: summaryData, error } = await supabase
-        .from('daily_summary')
-        .select('summary_date, calories_total, calorie_target, sleep_hours, did_workout, streak_color')
-        .eq('user_id', userId)
-        .gte('summary_date', sinceISO)
-        .order('summary_date', { ascending: false });
-
-      if (error) {
-        console.error("Error fetching streak data:", error);
-        return res.status(500).json({ message: "Failed to fetch streak data" });
-      }
-
-      // Map to DailySummaryRow format
-      const rows: DailySummaryRow[] = (summaryData || []).map((row: any) => ({
-        summary_date: row.summary_date,
-        calories_total: row.calories_total,
-        calorie_target: row.calorie_target,
-        sleep_hours: row.sleep_hours,
-        did_workout: row.did_workout,
-        streak_color: row.streak_color,
-      }));
-
-      // Calculate streak using the new logic
-      const result = getStreakFromDailySummary(rows);
-
+      const result = await getCurrentStreak(userId);
       res.json(result);
     } catch (error) {
       console.error("Error calculating streak:", error);
