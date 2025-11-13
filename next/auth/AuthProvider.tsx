@@ -1,4 +1,3 @@
-// auth/AuthProvider.tsx
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
@@ -31,16 +30,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
+    (async () => {
+      const { data, error } = await supabase.auth.getSession();
+
       if (!mounted) return;
+
+      if (error) console.error("getSession error:", error.message);
+
       setSession(data.session ?? null);
       setIsLoading(false);
-    });
+    })();
 
-    // Listen for future auth changes
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => {
-      setSession(sess);
-    });
+    // Subscribe to auth changes
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, newSession) => {
+        setSession(newSession);
+      }
+    );
 
     return () => {
       mounted = false;
