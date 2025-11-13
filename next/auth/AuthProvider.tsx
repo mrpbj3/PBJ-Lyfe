@@ -1,8 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
+
+import type { Session, User } from "@supabase/supabase-js";
 
 type AuthCtxType = {
   user: User | null;
@@ -30,23 +31,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    (async () => {
-      const { data, error } = await supabase.auth.getSession();
-
+    supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
-
-      if (error) console.error("getSession error:", error.message);
-
       setSession(data.session ?? null);
       setIsLoading(false);
-    })();
+    });
 
-    // Subscribe to auth changes
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, newSession) => {
-        setSession(newSession);
-      }
-    );
+    // Live listener for auth changes
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
 
     return () => {
       mounted = false;
