@@ -1,28 +1,46 @@
-// app/layout.tsx
-import type { Metadata } from "next";
 import "./globals.css";
+import { AuthProvider, useAuth } from "@/auth/AuthProvider";
 
-import { AuthProvider } from "@/auth/AuthProvider";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+// --- Protect all pages globally ---
+function GlobalAuthGuard({ children }: { children: React.ReactNode }) {
+  const { isLoading, isAuthenticated } = useAuth();
 
-export const metadata: Metadata = {
-  title: "PBJ Lyfe",
-  description: "One simple daily flow to track your Lyfe",
-};
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading…</div>
+      </div>
+    );
+  }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+  // Allow login and callback pages to render without redirect
+  if (typeof window !== "undefined") {
+    const path = window.location.pathname;
+
+    if (path.startsWith("/login") || path.startsWith("/auth/callback")) {
+      return children;
+    }
+  }
+
+  // Not authenticated → redirect to login
+  if (!isAuthenticated) {
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
+    return null;
+  }
+
+  return children;
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
         <AuthProvider>
-          <QueryClientProvider client={queryClient}>
+          <GlobalAuthGuard>
             {children}
-          </QueryClientProvider>
+          </GlobalAuthGuard>
         </AuthProvider>
       </body>
     </html>
