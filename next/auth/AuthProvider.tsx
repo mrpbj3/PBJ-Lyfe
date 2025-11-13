@@ -1,11 +1,22 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import type { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+import {
+  createBrowserClient,
+  type SupabaseClient,
+  type Session,
+  type User,
+} from "@supabase/ssr";
+import { useRouter } from "next/navigation";
 
-type Ctx = {
+// ----------- CONTEXT TYPES -------------
+type AuthContextType = {
   user: User | null;
   session: Session | null;
   loading: boolean;
@@ -13,92 +24,103 @@ type Ctx = {
   isAuthenticated: boolean;
   signOut: () => Promise<void>;
 };
-const AuthCtx = createContext<Ctx>({ 
-  user: null, 
-  session: null, 
-  loading: true, 
+
+const AuthCtx = createContext<AuthContextType>({
+  user: null,
+  session: null,
+  loading: true,
   isLoading: true,
   isAuthenticated: false,
-  signOut: async () => {} 
+  signOut: async () => {},
 });
+
 export const useAuth = () => useContext(AuthCtx);
 
-async function ensureBootstrap(u: User) {
-  const { error } = await supabase.rpc("create_profile", { _id: u.id });
-  if (error) console.error("create_profile RPC failed:", error.message);
-  else console.log("Profile created successfully for user:", u.id);
+// ----------- SUPABASE CLIENT (BROWSER) -------------
+function getClient(): SupabaseClient {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+// ----------- AUTOMATIC PROFILE CREATION -------------
+async function ensureBootstrap(user: User) {
+  try {
+    const supabase = getClient();
+    const { error } = await supabase.rpc("create_profile", { _id: user.id });
+    if (error) console.warn("Profile bootstrap failed:", error.message);
+  } catch (e) {
+    console.error("bootstrap error:", e);
+  }
+}
+
+// ----------- PROVIDER IMPLEMENTATION -------------
+export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
+  const [supabase] = useState(() => getClient());
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // -------------------------------------------------
+  // RESTORE SESSION ON PAGE LOAD (SSR + CSR SUPPORT)
+  // -------------------------------------------------
   useEffect(() => {
-    let mounted = true;
+    let active = true;
 
-    (async () => {
+    async function init() {
       try {
-        const result = await supabase.auth.getSession();
-        if (!mounted) return;
-        setSession(result.data.session ?? null);
-        if (result.data.session?.user) {
-          // bootstrap but fail silently so we don't block UI
-          try {
-            await ensureBootstrap(result.data.session.user);
-          } catch (err) {
-            console.error('bootstrap error', err);
-          }
+        const { data } = await supabase.auth.getSession();
+        if (!active) return;
+
+        setSession(data.session ?? null);
+
+        if (data.session?.user) {
+          ensureBootstrap(data.session.user);
         }
-      } catch (err) {
-        console.error('Error fetching supabase session', err);
       } finally {
-        // ALWAYS clear loading to avoid the app getting stuck on a blank loading screen
-        if (mounted) setLoading(false);
+        if (active) setLoading(false);
       }
-    })();
+    }
 
-    // subscribe
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_evt: any, s: any) => {
-      try {
-        setSession(s);
-        if (s?.user) {
-          try {
-            await ensureBootstrap(s.user);
-          } catch (err) {
-            console.error('bootstrap on auth change error', err);
-          }
+    init();
+
+    // -------------------------------------------------
+    // LISTEN FOR AUTH CHANGES
+    // -------------------------------------------------
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      async (_event, newSession) => {
+        setSession(newSession ?? null);
+
+        if (newSession?.user) {
+          ensureBootstrap(newSession.user);
         }
-      } catch (err) {
-        console.error('onAuthStateChange handler error', err);
       }
-    });
+    );
 
     return () => {
-      mounted = false;
-      try {
-        sub.subscription.unsubscribe();
-      } catch { /* ignore */ }
+      active = false;
+      subscription.subscription.unsubscribe();
     };
-  }, []);
+  }, [supabase]);
 
-  const handleSignOut = async () => {
+  // -------------------------------------------------
+  // SIGN OUT
+  // -------------------------------------------------
+  const signOut = async () => {
     await supabase.auth.signOut();
-    router.push('/');
+    router.push("/");
   };
 
-  return (
-    <AuthCtx.Provider
-      value={{
-        user: session?.user ?? null,
-        session,
-        loading,
-        isLoading: loading,
-        isAuthenticated: !!session?.user,
-        signOut: handleSignOut,
-      }}
-    >
-      {children}
-    </AuthCtx.Provider>
-  );
+  const value: AuthContextType = {
+    user: session?.user ?? null,
+    session,
+    loading,
+    isLoading: loading,
+    isAuthenticated: !!session?.user,
+    signOut,
+  };
+
+  return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
