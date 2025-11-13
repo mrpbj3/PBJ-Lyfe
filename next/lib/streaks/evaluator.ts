@@ -1,6 +1,6 @@
 // PBJ Health - Streak Evaluator
 // Uses daily_summary table to calculate user streaks
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/client";
 
 export async function calculateUserStreak(userId: string) {
   const { data, error } = await supabase

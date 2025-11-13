@@ -2,7 +2,7 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useSevenDay } from '@/hooks/useSevenDay';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 import { kgToLb } from '@/lib/units';
 
 interface Weight7dProps {
@@ -39,7 +39,7 @@ export function Weight7d({ userId }: Weight7dProps) {
 
   const chartData = data
     .filter(d => d.weightKg !== null)
-    .map(d => ({
+    .map((d: any) => ({
       date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       weight: useImperial ? kgToLb(d.weightKg!) : d.weightKg!,
     }));

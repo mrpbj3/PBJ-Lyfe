@@ -19,7 +19,7 @@ export function Nutrition7d({ userId }: Nutrition7dProps) {
 
   const kcalTarget = data[0]?.kcalTarget || 2000;
 
-  const chartData = data.map(d => ({
+  const chartData = data.map((d: any) => ({
     date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     calories: d.calories || 0,
     target: kcalTarget,

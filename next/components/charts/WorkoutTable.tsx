@@ -1,6 +1,6 @@
 // PBJ Health - Workout 7-Day Table
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 
 interface WorkoutTableProps {
   userId: string;
@@ -22,7 +22,7 @@ export function WorkoutTable({ userId }: WorkoutTableProps) {
         .lte('date', endDate.toISOString().split('T')[0])
         .order('date', { ascending: false });
 
-      return (data || []).map(d => ({
+      return (data || []).map((d: any) => ({
         date: new Date(d.date).toLocaleDateString('en-US', { 
           weekday: 'short',
           month: 'short', 
@@ -50,7 +50,7 @@ export function WorkoutTable({ userId }: WorkoutTableProps) {
           </tr>
         </thead>
         <tbody>
-          {workoutData.map((workout, idx) => (
+          {workoutData.map((workout: any, idx: number) => (
             <tr key={idx} className="border-t hover:bg-muted">
               <td className="p-3">{workout.date}</td>
               <td className="p-3 text-right">{workout.duration} min</td>

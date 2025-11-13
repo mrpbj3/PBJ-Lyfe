@@ -1,7 +1,7 @@
 // PBJ Health - Weight 7-Day Line Chart
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 
 interface WeightChartProps {
   userId: string;
@@ -23,7 +23,7 @@ export function WeightChart({ userId }: WeightChartProps) {
         .lte('date', endDate.toISOString().split('T')[0])
         .order('date', { ascending: true });
 
-      return (data || []).map(d => ({
+      return (data || []).map((d: any) => ({
         date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         weight: d.weight_kg ? parseFloat(d.weight_kg as string) * 2.20462 : 0, // Convert kg to lbs
       }));

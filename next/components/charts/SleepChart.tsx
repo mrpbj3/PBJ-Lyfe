@@ -1,7 +1,7 @@
 // PBJ Health - Sleep 7-Day Bar Chart
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 
 interface SleepChartProps {
   userId: string;
@@ -24,7 +24,7 @@ export function SleepChart({ userId, targetHours = 6 }: SleepChartProps) {
         .lte('summary_date', endDate.toISOString().split('T')[0])
         .order('summary_date', { ascending: true });
 
-      return (data || []).map(d => ({
+      return (data || []).map((d: any) => ({
         date: new Date(d.summary_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         hours: d.sleep_hours || 0,
         target: targetHours,

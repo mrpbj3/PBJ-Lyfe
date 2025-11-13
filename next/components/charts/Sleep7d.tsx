@@ -19,7 +19,7 @@ export function Sleep7d({ userId }: Sleep7dProps) {
 
   const sleepTarget = data[0]?.sleepTarget || 6;
   
-  const chartData = data.map(d => ({
+  const chartData = data.map((d: any) => ({
     date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     hours: d.sleepHours || 0,
     target: sleepTarget,

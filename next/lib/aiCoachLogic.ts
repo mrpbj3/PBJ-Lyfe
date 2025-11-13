@@ -1,7 +1,7 @@
 // PBJ Health - AI Coach Logic
 // Generate summaries and answer user questions
 
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/client";
 
 export interface CoachResponse {
   summary: string;
@@ -42,10 +42,10 @@ export async function askMrPBJ(range: number, userId: string): Promise<string> {
 
     // Calculate averages and statistics
     const totalDays = dailyData.length;
-    const avgSleep = dailyData.reduce((sum, day) => sum + (day.sleep_hours || 0), 0) / totalDays;
-    const avgCalories = dailyData.reduce((sum, day) => sum + (day.calories || 0), 0) / totalDays;
-    const workoutDays = dailyData.filter(day => day.did_workout).length;
-    const greenDays = dailyData.filter(day => {
+    const avgSleep = dailyData.reduce((sum: number, day: any) => sum + (day.sleep_hours || 0), 0) / totalDays;
+    const avgCalories = dailyData.reduce((sum: number, day: any) => sum + (day.calories || 0), 0) / totalDays;
+    const workoutDays = dailyData.filter((day: any) => day.did_workout).length;
+    const greenDays = dailyData.filter((day: any) => {
       const score = 
         (day.calorie_ratio <= 1.0 ? 1 : 0) +
         (day.sleep_hours >= 6 ? 1 : 0) +

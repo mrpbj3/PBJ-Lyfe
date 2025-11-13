@@ -120,7 +120,7 @@ export default function Today() {
         isOpen={showWizard}
         onClose={handleWizardClose}
         userId={user?.id || ''}
-        userFirstName={user?.firstName ?? undefined}
+        userFirstName={profile?.first_name ?? undefined}
       />
       {/* Header */}
       <header className="border-b sticky top-0 bg-background/95 backdrop-blur z-50">
