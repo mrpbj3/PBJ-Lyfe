@@ -1,12 +1,12 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 
 export const createServerSupabaseClient = () => {
   const cookieStore = cookies();
-  
+
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || "http://localhost:54321",
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "dummy-key-for-build",
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() {
@@ -14,13 +14,11 @@ export const createServerSupabaseClient = () => {
         },
         setAll(cookiesToSet) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
           } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
+            // Ignore if inside a Server Component
           }
         },
       },
