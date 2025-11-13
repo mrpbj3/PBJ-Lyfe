@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
-export const createServerSupabaseClient = () => {
+export function createServerSupabase() {
   const cookieStore = cookies();
 
   return createServerClient(
@@ -14,14 +14,14 @@ export const createServerSupabaseClient = () => {
         },
         setAll(cookiesToSet) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
           } catch {
-            // Ignore if inside a Server Component
+            // ignore — safe in server-only environments
           }
-        },
-      },
+        }
+      }
     }
   );
-};
+}
