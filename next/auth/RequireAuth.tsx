@@ -1,17 +1,19 @@
+"use client";
+
 import { useEffect, useState } from 'react';
-import { useLocation } from 'wouter';
+import { useRouter } from 'next/navigation';
 import { useAuth } from './AuthProvider';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 
 export default function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  const [, navigate] = useLocation();
+  const router = useRouter();
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileComplete, setProfileComplete] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
-      navigate('/login');
+      router.push('/login');
       return;
     }
 
@@ -20,7 +22,7 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
       setProfileComplete(true);
       setProfileLoading(false);
     }
-  }, [loading, user, navigate]);
+  }, [loading, user, router]);
 
   if (loading || profileLoading) return <div className="p-6">Loading…</div>;
   if (!user || !profileComplete) return null;

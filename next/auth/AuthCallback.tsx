@@ -1,10 +1,12 @@
 // client/src/auth/AuthCallback.tsx
+"use client";
+
 import { useEffect } from "react";
-import { useLocation } from "wouter";
-import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase/client";
 
 export default function AuthCallback() {
-  const [, navigate] = useLocation();
+  const router = useRouter();
 
   useEffect(() => {
     (async () => {
@@ -13,14 +15,14 @@ export default function AuthCallback() {
       const code = urlParams.get('code');
       
       if (!code) {
-        navigate("/login", { replace: true });
+        router.replace("/login");
         return;
       }
       
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (error) {
         // Send them back to login with an error state in the hash
-        navigate(`/#error=${encodeURIComponent(error.message)}`, { replace: true });
+        router.replace(`/#error=${encodeURIComponent(error.message)}`);
         return;
       }
 
@@ -30,7 +32,7 @@ export default function AuthCallback() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        navigate("/login", { replace: true });
+        router.replace("/login");
         return;
       }
 
@@ -43,19 +45,19 @@ export default function AuthCallback() {
 
         // If profile exists but first_name is not set, redirect to profile for setup
         if (profile && !profile.first_name) {
-          navigate("/profile", { replace: true });
+          router.replace("/profile");
           return;
         }
 
         // If profile exists with first_name, go to today
         // If no profile or error, also go to today (lenient)
-        navigate("/today", { replace: true });
+        router.replace("/today");
       } catch (err) {
         console.log('Profile check error:', err);
-        navigate("/today", { replace: true });
+        router.replace("/today");
       }
     })();
-  }, [navigate]);
+  }, [router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center text-muted-foreground">

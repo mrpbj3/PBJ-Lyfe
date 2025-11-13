@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/auth/AuthProvider";
 import { useProfile } from "@/hooks/useProfile";
 import { LogOut, MessageCircle, Moon, Sun, User, Mail, MessageSquareText } from "lucide-react";
@@ -9,7 +9,7 @@ export default function HeaderMenu() {
   const { signOut } = useAuth();
   const { profile } = useProfile();
   const { theme, toggleTheme } = useTheme();
-  const [, navigate] = useLocation();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
 
   const initials = `${profile?.first_name?.[0] ?? ""}${profile?.last_name?.[0] ?? ""}`.toUpperCase() || "U";
@@ -26,9 +26,9 @@ export default function HeaderMenu() {
       </button>
       {open && (
         <div className="absolute right-0 mt-2 w-56 bg-card border rounded-lg shadow-lg py-1 z-50">
-          <MenuItem icon={User} label="Profile" onClick={() => { setOpen(false); navigate("/profile-detailed"); }} />
-          <MenuItem icon={MessageSquareText} label="Ask Mr. PBJ" onClick={() => { setOpen(false); navigate("/ask-mr-pbj"); }} />
-          <MenuItem icon={MessageCircle} label="Contact Us" onClick={() => { setOpen(false); navigate("/contact"); }} />
+          <MenuItem icon={User} label="Profile" onClick={() => { setOpen(false); router.push("/profile-detailed"); }} />
+          <MenuItem icon={MessageSquareText} label="Ask Mr. PBJ" onClick={() => { setOpen(false); router.push("/ask-mr-pbj"); }} />
+          <MenuItem icon={MessageCircle} label="Contact Us" onClick={() => { setOpen(false); router.push("/contact"); }} />
           <MenuItem
             icon={theme === "light" ? Moon : Sun}
             label={theme === "light" ? "Dark Mode" : "Light Mode"}

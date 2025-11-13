@@ -1,17 +1,19 @@
 // client/src/pages/Login.tsx
+"use client";
+
 import { useState } from "react";
-import { useLocation } from "wouter";
-import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
-// Helper – production site URL (set VITE_SITE_URL in Vercel)
-const SITE_URL = import.meta.env.VITE_SITE_URL || window.location.origin;
+// Helper – production site URL
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 const CALLBACK_URL = `${SITE_URL}/auth/callback`;
 
 export default function Login() {
-  const [, navigate] = useLocation();
+  const router = useRouter();
   const [tab, setTab] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,7 +33,7 @@ export default function Login() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) return navigate("/login");
+    if (!user) return router.push("/login");
 
     try {
       const { data: profile, error } = await supabase
@@ -42,10 +44,10 @@ export default function Login() {
 
       // If profile exists in table, go to today
       // If no profile or error, also go to today (lenient)
-      navigate("/today");
+      router.push("/today");
     } catch (err) {
       console.log('Profile check error:', err);
-      navigate("/today");
+      router.push("/today");
     }
   }
 
