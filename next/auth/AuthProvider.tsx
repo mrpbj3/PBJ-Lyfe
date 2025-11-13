@@ -1,7 +1,9 @@
+// auth/AuthProvider.tsx
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { createBrowserClient, type Session, type User } from "@supabase/ssr";
+import type { Session, User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase/client";
 
 type AuthCtxType = {
   user: User | null;
@@ -22,31 +24,26 @@ const AuthCtx = createContext<AuthCtxType>({
 export const useAuth = () => useContext(AuthCtx);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load initial session
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
 
     supabase.auth.getSession().then(({ data }) => {
-      if (!isMounted) return;
+      if (!mounted) return;
       setSession(data.session ?? null);
       setIsLoading(false);
     });
 
-    // Subscribe to auth changes
+    // Listen for future auth changes
     const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => {
       setSession(sess);
     });
 
     return () => {
-      isMounted = false;
+      mounted = false;
       listener.subscription.unsubscribe();
     };
   }, []);
