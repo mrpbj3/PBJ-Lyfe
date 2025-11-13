@@ -1,28 +1,13 @@
-"use client";
-
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
 import "./globals.css";
+import { AuthProvider } from "@/auth/AuthProvider";
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 60 * 1000,
-      },
-    },
-  }));
-
+export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <QueryClientProvider client={queryClient}>
+        <AuthProvider>
           {children}
-        </QueryClientProvider>
+        </AuthProvider>
       </body>
     </html>
   );
