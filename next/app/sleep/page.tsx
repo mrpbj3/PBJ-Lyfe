@@ -1,8 +1,24 @@
 "use client";
 
+import { redirect } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/auth/AuthProvider";
 
 export default function SleepPage() {
+  const { user, isLoading, isAuthenticated } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    redirect("/login");
+  }
+
   return (
     <div className="min-h-screen p-8">
       <Link href="/today" className="text-blue-600 hover:underline mb-4 inline-block">

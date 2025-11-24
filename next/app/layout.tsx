@@ -5,7 +5,7 @@ import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "PBJ Lyfe",
-  description: "Lifestyle tracking app",
+  description: "Your daily lifestyle dashboard",
 };
 
 export default function RootLayout({

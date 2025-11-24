@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/auth/AuthProvider";
 import { useProfile } from "@/hooks/useProfile";
@@ -103,12 +104,16 @@ export default function Today() {
   // ----------------------
   // Loading State
   // ----------------------
-  if (isLoading || !isAuthenticated) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    redirect("/login");
   }
 
   // ----------------------

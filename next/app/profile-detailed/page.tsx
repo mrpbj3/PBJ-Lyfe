@@ -1,5 +1,6 @@
 "use client";
 
+import { redirect } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -15,8 +16,20 @@ import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/apiClient";
 
 export default function ProfileDetailed() {
-  const { user } = useAuth();
+  const { user, isLoading, isAuthenticated } = useAuth();
   const { toast } = useToast();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    redirect("/login");
+  }
 
   const { data: profile, refetch } = useQuery({
     queryKey: ["profile", user?.id],
