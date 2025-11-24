@@ -1,7 +1,15 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export async function GET(req: Request) {
-  const supabase = await createServerSupabase();
+  const supabase = createServerSupabase();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { searchParams } = new URL(req.url);
   const date = searchParams.get("date");

@@ -3,8 +3,8 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
-export async function createServerSupabase() {
-  const cookieStore = await cookies();
+export function createServerSupabase() {
+  const cookieStore = cookies();
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
