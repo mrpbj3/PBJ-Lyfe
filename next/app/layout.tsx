@@ -1,24 +1,18 @@
-// app/layout.tsx
 import "./globals.css";
-import type { Metadata } from "next";
 import { AuthProvider } from "@/auth/AuthProvider";
-import { GlobalAuthGuard } from "./GlobalAuthGuard";
+import { ProfileProvider } from "@/hooks/useProfile";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "PBJ Lyfe",
-  description: "Lifestyle tracking app",
+  description: "Your daily lifestyle dashboard",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
         <AuthProvider>
-          <GlobalAuthGuard>{children}</GlobalAuthGuard>
+          <ProfileProvider>{children}</ProfileProvider>
         </AuthProvider>
       </body>
     </html>
