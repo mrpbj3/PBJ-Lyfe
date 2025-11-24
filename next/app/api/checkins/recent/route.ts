@@ -1,17 +1,21 @@
 import { NextResponse } from "next/server";
-import { createRouteClient } from "@/lib/supabase/server";
+import { createServerClient } from "@/lib/supabase/server";
 
 export async function GET(req: Request) {
   try {
-    const supabase = createRouteClient();
+    const supabase = createServerClient();
 
-    // Get the logged-in user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    // get logged-in user
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    // Correct column name is for_date — NOT date
+    // FIXED: correct column is for_date
     const { data, error } = await supabase
       .from("daily_checkins")
       .select("*")
