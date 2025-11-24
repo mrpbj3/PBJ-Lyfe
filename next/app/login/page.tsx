@@ -31,12 +31,24 @@ export default function LoginPage() {
 
   // AUTO-REDIRECT IF ALREADY LOGGED IN
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.user) {
-        router.push("/today");
+    let mounted = true;
+    
+    const checkSession = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (mounted && data.session?.user) {
+          router.replace("/today");
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
       }
-    })();
+    };
+    
+    checkSession();
+    
+    return () => {
+      mounted = false;
+    };
   }, [router]);
 
   // SIGN IN
@@ -53,7 +65,7 @@ export default function LoginPage() {
     setBusy(false);
     if (error) return setErr(error.message);
 
-    router.push("/today");
+    router.replace("/today");
   }
 
   // SIGN UP

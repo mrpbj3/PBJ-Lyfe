@@ -102,6 +102,18 @@ export default function ProfileDetailed() {
               </div>
             </div>
 
+            {/* Birthday */}
+            <div>
+              <Label htmlFor="birthday" className="text-base font-semibold">Birthday:</Label>
+              <Input 
+                id="birthday"
+                type="date"
+                className="mt-2"
+                defaultValue={profile.birthday || ""} 
+                onChange={(e)=>setEdit((x:any)=>({...x, birthday:e.target.value}))} 
+              />
+            </div>
+
             {/* Weight */}
             <div>
               <Label htmlFor="weight" className="text-base font-semibold">Weight:</Label>
@@ -114,12 +126,18 @@ export default function ProfileDetailed() {
                   onChange={(e)=>setEdit((x:any)=>({...x, starting_weight:+e.target.value}))} 
                   placeholder="Starting weight"
                 />
-                <Input 
-                  id="weightUnits"
-                  defaultValue={profile.units_weight || ""} 
-                  onChange={(e)=>setEdit((x:any)=>({...x, units_weight:e.target.value}))} 
-                  placeholder="Units (e.g., lbs, kg)"
-                />
+                <Select 
+                  value={edit.units_weight !== undefined ? edit.units_weight : (profile.units_weight || "lb")} 
+                  onValueChange={(value) => setEdit((x:any)=>({...x, units_weight: value}))}
+                >
+                  <SelectTrigger id="weightUnits">
+                    <SelectValue placeholder="Select units" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="lb">lb</SelectItem>
+                    <SelectItem value="kg">kg</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -135,12 +153,18 @@ export default function ProfileDetailed() {
                   onChange={(e)=>setEdit((x:any)=>({...x, starting_height_cm:+e.target.value}))} 
                   placeholder="Starting height"
                 />
-                <Input 
-                  id="heightUnits"
-                  defaultValue={profile.units_height || ""} 
-                  onChange={(e)=>setEdit((x:any)=>({...x, units_height:e.target.value}))} 
-                  placeholder="Units (e.g., cm, in)"
-                />
+                <Select 
+                  value={edit.units_height !== undefined ? edit.units_height : (profile.units_height || "ft/in")} 
+                  onValueChange={(value) => setEdit((x:any)=>({...x, units_height: value}))}
+                >
+                  <SelectTrigger id="heightUnits">
+                    <SelectValue placeholder="Select units" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ft/in">ft/in</SelectItem>
+                    <SelectItem value="cm">cm</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

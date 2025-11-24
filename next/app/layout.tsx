@@ -1,8 +1,7 @@
 // app/layout.tsx
 import "./globals.css";
 import type { Metadata } from "next";
-import { AuthProvider } from "@/auth/AuthProvider";
-import { GlobalAuthGuard } from "./GlobalAuthGuard";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "PBJ Lyfe",
@@ -17,9 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthProvider>
-          <GlobalAuthGuard>{children}</GlobalAuthGuard>
-        </AuthProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
