@@ -3,6 +3,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 export async function GET() {
   const supabase = createServerSupabase();
 
+  // MUST authenticate user
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -11,13 +12,11 @@ export async function GET() {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data, error } = await supabase.rpc("get_7day_analytics", {
-    _user_id: user.id,
-  });
+  const { data, error } = await supabase.rpc("get_7day_analytics");
 
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 
-  return Response.json(data ?? []);
+  return Response.json(data);
 }
