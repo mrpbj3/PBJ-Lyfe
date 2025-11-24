@@ -1,9 +1,17 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function GET(req: Request) {
   const supabase = createServerSupabase();
+  const { searchParams } = new URL(req.url);
+  const date = searchParams.get("date");
 
-  const { data, error } = await supabase.rpc("get_current_streak");
+  if (!date) {
+    return Response.json({ error: "Missing ?date=" }, { status: 400 });
+  }
+
+  const { data, error } = await supabase.rpc("get_daily_analytics", {
+    _date: date,
+  });
 
   if (error) {
     console.error(error);
