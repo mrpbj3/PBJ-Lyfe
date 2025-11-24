@@ -58,7 +58,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       if (fetchError) {
         console.error('Profile load error', fetchError);
         setError(fetchError as Error);
-        // Keep profile = null to expose the bug, fill in safe defaults
+        // Set safe defaults when profile doesn't exist yet
         setProfile({
           id: user.id,
           first_name: '',
