@@ -1,7 +1,7 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export async function GET() {
-  const supabase = createServerSupabase();
+  const supabase = await createServerSupabase();
 
   const { data, error } = await supabase.rpc("get_7day_analytics");
 

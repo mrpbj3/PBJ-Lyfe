@@ -58,18 +58,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       if (fetchError) {
         console.error('Profile load error', fetchError);
         setError(fetchError as Error);
-        // Set safe defaults when profile doesn't exist yet
-        setProfile({
-          id: user.id,
-          first_name: '',
-          last_name: '',
-          profile_color: '#AB13E6',
-          units_weight: 'lb',
-          units_height: 'ft/in',
-          timezone: 'America/New_York',
-          calorie_target: 2000,
-          sleep_target_minutes: 480,
-        });
+        setProfile(null);
       } else {
         setProfile({
           ...data,
@@ -84,18 +73,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error('Profile load error', err);
       setError(err as Error);
-      // Set safe defaults on exception
-      setProfile({
-        id: user.id,
-        first_name: '',
-        last_name: '',
-        profile_color: '#AB13E6',
-        units_weight: 'lb',
-        units_height: 'ft/in',
-        timezone: 'America/New_York',
-        calorie_target: 2000,
-        sleep_target_minutes: 480,
-      });
+      setProfile(null);
     } finally {
       setIsLoading(false);
     }

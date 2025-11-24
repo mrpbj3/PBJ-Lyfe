@@ -1,7 +1,7 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export async function GET(req: Request) {
-  const supabase = createServerSupabase();
+  const supabase = await createServerSupabase();
 
   const { searchParams } = new URL(req.url);
   const date = searchParams.get("date");

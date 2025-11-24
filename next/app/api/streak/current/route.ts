@@ -1,7 +1,7 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export async function GET() {
-  const supabase = createServerSupabase();
+  const supabase = await createServerSupabase();
 
   try {
     const { data, error } = await supabase.rpc("get_current_streak");

@@ -1,24 +1,14 @@
+"use server";
+
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
-export function createServerSupabase() {
-  const cookieStore = cookies();
-
-  // Use SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY if available (Production)
-  // Otherwise fall back to NEXT_PUBLIC_* vars (Preview/Development)
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    console.error("Supabase configuration missing:", { 
-      hasUrl: !!supabaseUrl, 
-      hasKey: !!supabaseKey 
-    });
-  }
+export async function createServerSupabase() {
+  const cookieStore = await cookies();
 
   return createServerClient(
-    supabaseUrl!,
-    supabaseKey!,
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
       cookies: {
         getAll() {
