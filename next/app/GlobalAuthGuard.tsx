@@ -5,7 +5,7 @@ import { ReactNode, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/auth/AuthProvider";
 
-const PUBLIC_PATHS = ["/login", "/auth/callback"];
+const PUBLIC_PATHS = ["/", "/login", "/auth/callback"];
 
 export function GlobalAuthGuard({ children }: { children: ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
