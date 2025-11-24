@@ -64,6 +64,15 @@ export default function Today() {
   const [showWizard, setShowWizard] = useState(false);
 
   // ----------------------
+  // Handle redirect in useEffect to avoid React error
+  // ----------------------
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      redirect("/login");
+    }
+  }, [isLoading, isAuthenticated]);
+
+  // ----------------------
   // 🔥 Debug Logging
   // ----------------------
   console.log("=== TODAY PAGE MOUNTED ===");
@@ -112,8 +121,13 @@ export default function Today() {
     );
   }
 
+  // Show loading while redirect is happening
   if (!isAuthenticated) {
-    redirect("/login");
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
   }
 
   // ----------------------

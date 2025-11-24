@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { redirect } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
@@ -19,16 +20,18 @@ export default function ProfileDetailed() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const { toast } = useToast();
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      redirect("/login");
+    }
+  }, [isLoading, isAuthenticated]);
+
+  if (isLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     );
-  }
-
-  if (!isAuthenticated) {
-    redirect("/login");
   }
 
   const { data: profile, refetch } = useQuery({

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/auth/AuthProvider";
@@ -7,16 +8,18 @@ import { useAuth } from "@/auth/AuthProvider";
 export default function Page() {
   const { user, isLoading, isAuthenticated } = useAuth();
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      redirect("/login");
+    }
+  }, [isLoading, isAuthenticated]);
+
+  if (isLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     );
-  }
-
-  if (!isAuthenticated) {
-    redirect("/login");
   }
 
   return (
