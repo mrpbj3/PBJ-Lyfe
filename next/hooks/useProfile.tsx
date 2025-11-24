@@ -1,3 +1,5 @@
+"use client";
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/auth/AuthProvider';
@@ -54,33 +56,33 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (fetchError) {
-        console.error('Profile fetch error:', fetchError);
-        // Set safe defaults on error
+        console.error('Profile load error', fetchError);
+        setError(fetchError as Error);
+        // Keep profile = null to expose the bug, fill in safe defaults
         setProfile({
           id: user.id,
           first_name: '',
           last_name: '',
           profile_color: '#AB13E6',
-          units_weight: 'kg',
-          units_height: 'cm',
-          timezone: 'UTC',
+          units_weight: 'lb',
+          units_height: 'ft/in',
+          timezone: 'America/New_York',
           calorie_target: 2000,
           sleep_target_minutes: 480,
         });
-        setError(fetchError as Error);
       } else {
         setProfile({
           ...data,
           profile_color: data?.profile_color || '#AB13E6',
-          units_weight: data?.units_weight || 'kg',
-          units_height: data?.units_height || 'cm',
-          timezone: data?.timezone || 'UTC',
+          units_weight: data?.units_weight || 'lb',
+          units_height: data?.units_height || 'ft/in',
+          timezone: data?.timezone || 'America/New_York',
           calorie_target: data?.calorie_target || 2000,
           sleep_target_minutes: data?.sleep_target_minutes || 480,
         });
       }
     } catch (err) {
-      console.error('Profile fetch exception:', err);
+      console.error('Profile load error', err);
       setError(err as Error);
       // Set safe defaults on exception
       setProfile({
@@ -88,9 +90,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         first_name: '',
         last_name: '',
         profile_color: '#AB13E6',
-        units_weight: 'kg',
-        units_height: 'cm',
-        timezone: 'UTC',
+        units_weight: 'lb',
+        units_height: 'ft/in',
+        timezone: 'America/New_York',
         calorie_target: 2000,
         sleep_target_minutes: 480,
       });

@@ -10,13 +10,19 @@ export async function GET(req: Request) {
     return Response.json({ error: "Missing ?date=YYYY-MM-DD" }, { status: 400 });
   }
 
-  const { data, error } = await supabase.rpc("get_daily_analytics", {
-    _date: date,
-  });
+  try {
+    const { data, error } = await supabase.rpc("get_daily_analytics", {
+      _date: date,
+    });
 
-  if (error) {
+    if (error) {
+      console.error("Supabase daily error", error);
+      return Response.json({ error: error.message }, { status: 500 });
+    }
+
+    return Response.json(data);
+  } catch (error: any) {
+    console.error("Supabase daily error", error);
     return Response.json({ error: error.message }, { status: 500 });
   }
-
-  return Response.json(data);
 }
