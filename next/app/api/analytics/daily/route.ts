@@ -1,27 +1,49 @@
+// app/api/analytics/daily/route.ts
+import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export async function GET(req: Request) {
-  const supabase = createServerSupabase();
+  try {
+    const url = new URL(req.url);
+    const date = url.searchParams.get("date");
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    if (!date) {
+      return NextResponse.json(
+        { error: "Missing ?date=" },
+        { status: 400 }
+      );
+    }
 
-  if (!user)
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    const supabase = createServerSupabase();
 
-  const { searchParams } = new URL(req.url);
-  const date = searchParams.get("date");
+    // MUST AUTH FIRST so auth.uid() works inside RPC
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!date)
-    return Response.json({ error: "Missing ?date=" }, { status: 400 });
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
 
-  const { data, error } = await supabase.rpc("get_daily_analytics", {
-    _date: date,
-  });
+    // NOW call RPC with required parameter
+    const { data, error } = await supabase.rpc(
+      "get_daily_analytics",
+      { _date: date }
+    );
 
-  if (error)
-    return Response.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.error("RPC ERROR:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
-  return Response.json(data);
+    return NextResponse.json(data);
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message },
+      { status: 500 }
+    );
+  }
 }
