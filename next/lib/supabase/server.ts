@@ -18,10 +18,10 @@ export function createServerSupabase() {
               cookieStore.set(name, value, options)
             );
           } catch {
-            // ignore
+            /* ignore */
           }
-        }
-      }
+        },
+      },
     }
   );
 }
