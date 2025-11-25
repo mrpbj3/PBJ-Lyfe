@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { DashboardCard } from "@/components/DashboardCard";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/auth/AuthProvider";
 import { ArrowLeft, Plus, Trash2, User } from "lucide-react";
 import Link from "next/link";
@@ -25,6 +25,7 @@ interface RecoveryItem {
 export default function ProfileDetailed() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [isSaving, setIsSaving] = useState(false);
 
   const { data: profile, refetch } = useQuery({
     queryKey: ["profile", user?.id],
@@ -35,6 +36,23 @@ export default function ProfileDetailed() {
   const { data: checkins } = useQuery({
     queryKey: ["checkins", "recent", user?.id],
     queryFn: () => apiClient('/api/checkins/recent'),
+    enabled: !!user,
+  });
+
+  // Fetch current weight from most recent daily_summary
+  const { data: latestWeight } = useQuery({
+    queryKey: ["latest-weight", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("daily_summary")
+        .select("weight_kg, summary_date")
+        .eq("user_id", user?.id)
+        .not("weight_kg", "is", null)
+        .order("summary_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
     enabled: !!user,
   });
 
@@ -50,7 +68,13 @@ export default function ProfileDetailed() {
 
   if (!profile) return <div className="p-8">Loading…</div>;
 
+  // Compute sleep goal in hours and minutes for display
+  const sleepMinutes = edit.sleep_target_minutes ?? profile.sleep_target_minutes ?? 0;
+  const sleepHours = Math.floor(sleepMinutes / 60);
+  const sleepMins = sleepMinutes % 60;
+
   const save = async () => {
+    setIsSaving(true);
     try {
       const updateData = {
         ...edit,
@@ -58,14 +82,31 @@ export default function ProfileDetailed() {
       };
       const { error } = await supabase.from("profiles").update(updateData).eq("id", user?.id);
       if (error) {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
+        toast({ 
+          title: "Error", 
+          description: "Sorry, we could not save your changes. Please try again later.", 
+          variant: "destructive",
+          className: "fixed bottom-4 right-4"
+        });
+        setIsSaving(false);
         return;
       }
       await refetch();
       setEdit({});
-      toast({ title: "Success", description: "Profile updated successfully!" });
+      toast({ 
+        title: "Changes Saved!", 
+        description: "Your profile has been updated.",
+        className: "bg-green-500 text-white fixed bottom-4 right-4"
+      });
     } catch (err) {
-      toast({ title: "Error", description: "Failed to update profile", variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: "Sorry, we could not save your changes. Please try again later.", 
+        variant: "destructive",
+        className: "fixed bottom-4 right-4"
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -321,6 +362,54 @@ export default function ProfileDetailed() {
         {/* SECTION 4: Goals */}
         <DashboardCard title="Goals">
           <div className="space-y-4">
+            {/* Height Display */}
+            <div>
+              <Label className="text-base font-semibold">Height</Label>
+              <div className="mt-2 p-3 bg-muted/50 rounded-lg">
+                <p className="font-medium">
+                  {profile.starting_height_cm || "Not set"} {profile.units_height === "cm" ? "cm" : "ft/in"}
+                </p>
+              </div>
+            </div>
+
+            {/* Current Weight (from latest weigh-in) */}
+            <div>
+              <Label className="text-base font-semibold">Current Weight</Label>
+              <div className="mt-2 p-3 bg-muted/50 rounded-lg">
+                {latestWeight?.weight_kg ? (
+                  <p className="font-medium">
+                    {(edit.units_weight ?? profile.units_weight) === "kg" 
+                      ? `${latestWeight.weight_kg.toFixed(1)} kg`
+                      : `${(latestWeight.weight_kg * 2.20462).toFixed(1)} lb`
+                    }
+                    <span className="text-sm text-muted-foreground ml-2">
+                      (Last weighed: {new Date(latestWeight.summary_date).toLocaleDateString()})
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground">No weigh-ins recorded yet</p>
+                )}
+              </div>
+            </div>
+
+            {/* Target Weight */}
+            <div>
+              <Label className="text-base font-semibold">Target Weight</Label>
+              <div className="flex items-center gap-2 mt-2">
+                <Input
+                  type="number"
+                  step="0.1"
+                  className="w-32"
+                  defaultValue={profile.target_weight || ""}
+                  onChange={(e) => setEdit((x: any) => ({ ...x, target_weight: +e.target.value }))}
+                  placeholder="150"
+                />
+                <span className="text-muted-foreground">
+                  {(edit.units_weight ?? profile.units_weight) === "kg" ? "kg" : "lb"}
+                </span>
+              </div>
+            </div>
+
             {/* Calorie Target */}
             <div>
               <Label className="text-base font-semibold">Daily Calorie Target</Label>
@@ -360,15 +449,19 @@ export default function ProfileDetailed() {
                 <Input
                   type="number"
                   className="w-32"
-                  defaultValue={profile.sleep_target_minutes || ""}
+                  value={edit.sleep_target_minutes ?? profile.sleep_target_minutes ?? ''}
                   onChange={(e) => setEdit((x: any) => ({ ...x, sleep_target_minutes: +e.target.value }))}
                   placeholder="480"
                 />
                 <span className="text-muted-foreground">minutes</span>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                480 minutes = 8 hours
-              </p>
+              {sleepMinutes > 0 && (
+                <p className="text-sm text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
+                  {sleepMinutes} minutes = {sleepHours} hours {sleepMins > 0 ? `${sleepMins} minutes` : ''}
+                  <br />
+                  <span className="text-xs">(We recommend 6–9 hours of sleep)</span>
+                </p>
+              )}
             </div>
           </div>
         </DashboardCard>
@@ -458,7 +551,7 @@ export default function ProfileDetailed() {
               Control which categories are marked as sensitive and excluded from AI summaries.
             </p>
 
-            {['sleep', 'dreams', 'mood', 'stress', 'calories', 'workouts', 'steps'].map((category) => {
+            {['sleep', 'dreams', 'mood', 'stress', 'calories', 'workouts'].map((category) => {
               const sensitiveKey = `sensitive_${category}` as string;
               const includeKey = `include_${category}_in_summary` as string;
               return (
@@ -552,8 +645,8 @@ export default function ProfileDetailed() {
         </DashboardCard>
 
         {/* Save Button */}
-        <Button onClick={save} size="lg" className="w-full">
-          Save All Changes
+        <Button onClick={save} size="lg" className="w-full" disabled={isSaving}>
+          {isSaving ? 'Saving...' : 'Save All Changes'}
         </Button>
 
         {/* SECTION: Recent Check-Ins */}
