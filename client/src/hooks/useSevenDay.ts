@@ -9,7 +9,7 @@ export interface SevenDayData {
   workoutMin: number;
   calories: number;
   kcalTarget: number;
-  sleepTarget: number;
+  sleepTarget: number; // in minutes
 }
 
 export function useSevenDay(userId: string | undefined) {

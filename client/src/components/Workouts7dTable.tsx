@@ -1,6 +1,7 @@
 // components/Workouts7dTable.tsx
 import { useSevenDay } from '@/hooks/useSevenDay';
 import { formatDuration } from '@/lib/units';
+import { Link } from 'wouter';
 
 interface Workouts7dTableProps {
   userId: string;
@@ -35,13 +36,17 @@ export function Workouts7dTable({ userId }: Workouts7dTableProps) {
         </thead>
         <tbody>
           {workoutDays.map((day, idx) => (
-            <tr key={idx} className="border-t hover:bg-muted">
+            <tr key={idx} className="border-t hover:bg-muted cursor-pointer">
               <td className="p-3">
-                {new Date(day.date).toLocaleDateString('en-US', {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                })}
+                <Link href={`/workouts/${day.date}`}>
+                  <span className="hover:underline text-primary">
+                    {new Date(day.date).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </span>
+                </Link>
               </td>
               <td className="p-3 text-right">{formatDuration(day.workoutMin)}</td>
             </tr>

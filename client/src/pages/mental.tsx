@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/auth/AuthProvider';
 import { DashboardCard } from '@/components/DashboardCard';
+import { DateSelector } from '@/components/DateSelector';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,18 +15,30 @@ import { getTodayISO } from '@/lib/dateUtils';
 
 export default function Mental() {
   const { isAuthenticated } = useAuth();
+  const [selectedDate, setSelectedDate] = useState(getTodayISO());
   const [rating, setRating] = useState<'great' | 'ok' | 'bad'>('ok');
   const [why, setWhy] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Map rating to numeric value for daily_summary
+  const ratingToNumber = (r: string): number => {
+    switch (r) {
+      case 'great': return 3;
+      case 'ok': return 2;
+      case 'bad': return 1;
+      default: return 2;
+    }
+  };
+
   const mutation = useMutation({
-    mutationFn: async (data: { date: string; rating: string; why?: string }) => {
-      await apiRequest('POST', '/api/mental', data);
+    mutationFn: async (data: { date: string; mentalRating: number }) => {
+      await apiRequest('POST', '/api/daily-summary', data);
     },
     onSuccess: () => {
       toast({ title: 'Mental health logged successfully!' });
       queryClient.invalidateQueries({ queryKey: ['/api/analytics/daily'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/analytics/7d'] });
       setWhy('');
     },
     onError: (error: Error) => {
@@ -35,7 +48,10 @@ export default function Mental() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    mutation.mutate({ date: getTodayISO(), rating, why: why || undefined });
+    mutation.mutate({ 
+      date: selectedDate, 
+      mentalRating: ratingToNumber(rating)
+    });
   };
 
   if (!isAuthenticated) return null;
@@ -44,7 +60,7 @@ export default function Mental() {
     <div className="min-h-screen bg-background">
       <header className="border-b sticky top-0 bg-background/95 backdrop-blur z-50">
         <div className="max-w-2xl mx-auto px-4 py-4">
-          <Link href="/">
+          <Link href="/today">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Today
@@ -52,12 +68,15 @@ export default function Mental() {
           </Link>
         </div>
       </header>
+
+      <DateSelector date={selectedDate} onDateChange={setSelectedDate} />
+
       <div className="max-w-2xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Mental Health Check-In</h1>
-        <DashboardCard title="How are you feeling today?">
+        <DashboardCard title="How are you feeling?">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <Label>Your mood yesterday</Label>
+              <Label>Your mood</Label>
               <div className="grid grid-cols-3 gap-4 mt-2">
                 <Button
                   type="button"

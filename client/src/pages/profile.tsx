@@ -75,7 +75,7 @@ export default function Profile() {
     })();
   }, [authUser, authLoading]);
 
-  const { data: goals, isLoading: goalsLoading } = useQuery({
+  const { data: goals, isLoading: goalsLoading } = useQuery<{ goalWeightKg?: number; kcalGoal?: number; stepGoal?: number }>({
     queryKey: ['/api/goals'],
     enabled: !!authUser && !isFirstTimeSetup,
   });

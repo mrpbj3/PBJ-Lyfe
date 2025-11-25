@@ -299,94 +299,107 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
   // Submit all data
   const submitCheckIn = useMutation({
     mutationFn: async (data: CheckInFormData) => {
-      // Submit mental health
-      await apiRequest('POST', '/api/mental', {
-        date: today,
-        rating: data.mentalRating,
-        why: data.mentalWhy,
-      });
+      // Calculate sleep hours from start/end times
+      let sleepHours = 0;
+      if (data.sleepStart && data.sleepEnd) {
+        const startTime = new Date(data.sleepStart).getTime();
+        const endTime = new Date(data.sleepEnd).getTime();
+        sleepHours = Math.max(0, (endTime - startTime) / (1000 * 60 * 60));
+      }
 
-      // Submit sleep
-      await apiRequest('POST', '/api/sleep', {
-        startAt: data.sleepStart,
-        endAt: data.sleepEnd,
-        dreamType: data.dreamType,
-        dreamDescription: data.dreamDescription,
-      });
-
-      // Submit workout sessions if applicable
+      // Calculate workout minutes from sessions
+      let workoutMinutes = 0;
+      const workoutBreakdown: { strength: any[]; cardio: any[] } = { strength: [], cardio: [] };
+      
       if (data.didWorkout && data.workoutDate) {
         for (const session of workoutSessions) {
-          // Only submit sessions with at least start/end time
           if (session.startTime && session.endTime) {
-            // Combine date with times for full datetime
-            const startAt = `${data.workoutDate}T${session.startTime}`;
-            const endAt = `${data.workoutDate}T${session.endTime}`;
+            const [startH, startM] = session.startTime.split(':').map(Number);
+            const [endH, endM] = session.endTime.split(':').map(Number);
+            const startMinutes = startH * 60 + startM;
+            const endMinutes = endH * 60 + endM;
+            workoutMinutes += Math.max(0, endMinutes - startMinutes);
             
-            // Collect all non-empty strength exercises
-            const exercises = session.strength
-              .filter(ex => ex.exercise.trim())
-              .map(ex => `${ex.exercise} - ${ex.weight} x ${ex.reps}`)
-              .concat(
-                session.cardio
-                  .filter(c => c.type.trim())
-                  .map(c => `${c.type} - ${c.duration}`)
-              );
-            
-            await apiRequest('POST', '/api/workouts', {
-              date: data.workoutDate,
-              startAt: startAt,
-              endAt: endAt,
-              exercises: exercises,
+            // Collect exercises for breakdown
+            session.strength.filter(ex => ex.exercise.trim()).forEach(ex => {
+              workoutBreakdown.strength.push({
+                exercise: ex.exercise,
+                weight: ex.weight,
+                reps: ex.reps
+              });
+            });
+            session.cardio.filter(c => c.type.trim()).forEach(c => {
+              workoutBreakdown.cardio.push({
+                type: c.type,
+                duration: c.duration
+              });
             });
           }
         }
       }
 
-      // Submit weight if provided (convert lbs to kg for storage)
+      // Map mental rating to numeric value
+      const mentalRating = data.mentalRating === 'great' ? 3 : data.mentalRating === 'ok' ? 2 : 1;
+      
+      // Map work stress to numeric value
+      const workStressLevel = data.workStress === 'high' ? 3 : data.workStress === 'medium' ? 2 : data.workStress === 'low' ? 1 : undefined;
+
+      // Get calorie target from goals
+      const calorieTarget = goals?.kcalGoal || 2000;
+
+      // Submit all data to daily_summary via upsert
+      await apiRequest('POST', '/api/daily-summary', {
+        date: yesterday,
+        sleepHours: sleepHours,
+        weightKg: data.didWeighIn && data.weightLbs ? data.weightLbs * 0.453592 : undefined,
+        workoutMinutes: workoutMinutes,
+        workoutBreakdown: workoutMinutes > 0 ? workoutBreakdown : undefined,
+        meditationMinutes: data.didMeditate && data.meditationMin ? data.meditationMin : undefined,
+        mentalRating: mentalRating,
+        workStressLevel: workStressLevel,
+        dreamType: data.dreamType,
+        dreamDesc: data.dreamType !== 'none' ? data.dreamDescription : undefined,
+        socialMinutes: data.socialDuration || undefined,
+        hobbiesMinutes: data.hobbyDuration || undefined,
+        drugUseFlag: data.didUseDrugs,
+        caloriesTotal: data.caloriesConsumed || undefined,
+        calorieTarget: calorieTarget,
+      });
+
+      // Also submit individual records to maintain backward compatibility
+      // Submit sleep
+      if (data.sleepStart && data.sleepEnd) {
+        await apiRequest('POST', '/api/sleep', {
+          startAt: data.sleepStart,
+          endAt: data.sleepEnd,
+        });
+      }
+
+      // Submit workout sessions if applicable
+      if (data.didWorkout && data.workoutDate) {
+        for (const session of workoutSessions) {
+          if (session.startTime && session.endTime) {
+            const startAt = `${data.workoutDate}T${session.startTime}`;
+            const endAt = `${data.workoutDate}T${session.endTime}`;
+            
+            await apiRequest('POST', '/api/workouts', {
+              date: data.workoutDate,
+              startAt: startAt,
+              endAt: endAt,
+            });
+          }
+        }
+      }
+
+      // Submit weight if provided
       if (data.didWeighIn && data.weightLbs) {
-        const weightKg = data.weightLbs * 0.453592; // Convert lbs to kg
+        const weightKg = data.weightLbs * 0.453592;
         await apiRequest('POST', '/api/weight', {
           date: today,
           weightKg: weightKg,
         });
       }
 
-      // Submit meditation if done
-      if (data.didMeditate && data.meditationMin) {
-        await apiRequest('POST', '/api/meditation', {
-          date: today,
-          durationMin: data.meditationMin,
-        });
-      }
-
-      // Submit yesterday's work stress
-      if (data.workStress) {
-        await apiRequest('POST', '/api/work', {
-          date: yesterday,
-          stress: data.workStress,
-          why: data.workWhy,
-        });
-      }
-
-      // Submit yesterday's hobbies
-      if (data.yesterdayHobby) {
-        await apiRequest('POST', '/api/hobbies', {
-          date: yesterday,
-          hobby: data.yesterdayHobby,
-          durationMin: data.hobbyDuration || 0,
-        });
-      }
-
-      // Submit yesterday's social
-      if (data.yesterdaySocial) {
-        await apiRequest('POST', '/api/social', {
-          date: yesterday,
-          activity: data.yesterdaySocial,
-          durationMin: data.socialDuration || 0,
-        });
-      }
-      
       // Submit calories/meals if provided
       if (data.caloriesConsumed) {
         await apiRequest('POST', '/api/meals', {
@@ -427,8 +440,9 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/analytics/daily', today] });
-      queryClient.invalidateQueries({ queryKey: ['/api/streaks/current'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/analytics/daily'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/analytics/7d'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/streak/current'] });
       toast({
         title: 'Check-In Complete!',
         description: 'All your daily health data has been logged.',

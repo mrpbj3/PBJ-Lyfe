@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/auth/AuthProvider';
 import { DashboardCard } from '@/components/DashboardCard';
+import { DateSelector } from '@/components/DateSelector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,18 +15,19 @@ import { getYesterdayISO } from '@/lib/dateUtils';
 
 export default function Social() {
   const { isAuthenticated } = useAuth();
+  const [selectedDate, setSelectedDate] = useState(getYesterdayISO());
   const [activity, setActivity] = useState('');
   const [durationMin, setDurationMin] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async (data: { date: string; activity: string; durationMin?: number }) => {
-      await apiRequest('POST', '/api/social', data);
+    mutationFn: async (data: { date: string; socialMinutes: number }) => {
+      await apiRequest('POST', '/api/daily-summary', data);
     },
     onSuccess: () => {
       toast({ title: 'Social activity logged successfully!' });
-      queryClient.invalidateQueries({ queryKey: ['/api/social'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/analytics/7d'] });
       setActivity('');
       setDurationMin('');
     },
@@ -36,14 +38,14 @@ export default function Social() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activity.trim()) {
-      toast({ title: 'Error', description: 'Please describe the activity', variant: 'destructive' });
+    const minutes = parseInt(durationMin) || 0;
+    if (!activity.trim() && minutes === 0) {
+      toast({ title: 'Error', description: 'Please enter activity or duration', variant: 'destructive' });
       return;
     }
     mutation.mutate({
-      date: getYesterdayISO(),
-      activity: activity.trim(),
-      durationMin: durationMin ? parseInt(durationMin) : undefined,
+      date: selectedDate,
+      socialMinutes: minutes,
     });
   };
 
@@ -53,7 +55,7 @@ export default function Social() {
     <div className="min-h-screen bg-background">
       <header className="border-b sticky top-0 bg-background/95 backdrop-blur z-50">
         <div className="max-w-2xl mx-auto px-4 py-4">
-          <Link href="/">
+          <Link href="/today">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Today
@@ -61,9 +63,12 @@ export default function Social() {
           </Link>
         </div>
       </header>
+
+      <DateSelector date={selectedDate} onDateChange={setSelectedDate} />
+
       <div className="max-w-2xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Social Activities</h1>
-        <DashboardCard title="What social activities did you do yesterday?">
+        <DashboardCard title="Log your social time">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label htmlFor="activity">Social Activity</Label>
@@ -76,7 +81,7 @@ export default function Social() {
               />
             </div>
             <div>
-              <Label htmlFor="duration">Duration (minutes, optional)</Label>
+              <Label htmlFor="duration">Duration (minutes)</Label>
               <Input
                 id="duration"
                 type="number"
