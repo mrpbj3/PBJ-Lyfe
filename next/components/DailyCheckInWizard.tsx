@@ -78,7 +78,7 @@ const checkInSchema = z.object({
   // Step 2: Sleep
   sleepStart: z.string(),
   sleepEnd: z.string(),
-  dreamType: z.enum(['dream', 'nightmare', 'none']),
+  dreamType: z.enum(['none', 'dream', 'nightmare', 'good_dream', 'neutral_dream', 'lucid_dream', 'recurring_dream']),
   dreamDescription: z.string(),
   
   // Step 3: Workout (managed separately with state)

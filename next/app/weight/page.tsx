@@ -25,7 +25,8 @@ export default function Page() {
   const [weightKg, setWeightKg] = useState('');
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -195,11 +196,19 @@ export default function Page() {
               Take a photo of your scale and we'll try to read the weight automatically.
             </p>
             
+            {/* Separate inputs for camera and file upload */}
             <input
               type="file"
               accept="image/*"
               capture="environment"
-              ref={fileInputRef}
+              ref={cameraInputRef}
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+            <input
+              type="file"
+              accept="image/*"
+              ref={uploadInputRef}
               onChange={handleImageUpload}
               className="hidden"
             />
@@ -208,7 +217,7 @@ export default function Page() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => cameraInputRef.current?.click()}
                 disabled={isProcessingImage}
                 className="flex-1"
               >
@@ -218,13 +227,7 @@ export default function Page() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  if (fileInputRef.current) {
-                    fileInputRef.current.removeAttribute('capture');
-                    fileInputRef.current.click();
-                    fileInputRef.current.setAttribute('capture', 'environment');
-                  }
-                }}
+                onClick={() => uploadInputRef.current?.click()}
                 disabled={isProcessingImage}
                 className="flex-1"
               >
