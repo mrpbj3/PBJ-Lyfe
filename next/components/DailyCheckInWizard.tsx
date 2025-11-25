@@ -299,116 +299,105 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
   // Submit all data
   const submitCheckIn = useMutation({
     mutationFn: async (data: CheckInFormData) => {
-      // Submit mental health
-      await apiRequest('POST', '/api/mental', {
-        date: today,
-        rating: data.mentalRating,
-        why: data.mentalWhy,
-      });
+      // Calculate sleep hours from start/end times
+      let sleepHours = 0;
+      if (data.sleepStart && data.sleepEnd) {
+        const start = new Date(data.sleepStart);
+        const end = new Date(data.sleepEnd);
+        sleepHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        sleepHours = Math.round(sleepHours * 10) / 10;
+      }
 
-      // Submit sleep
-      await apiRequest('POST', '/api/sleep', {
-        startAt: data.sleepStart,
-        endAt: data.sleepEnd,
-        dreamType: data.dreamType,
-        dreamDescription: data.dreamDescription,
-      });
-
-      // Submit workout sessions if applicable
+      // Calculate workout minutes from sessions
+      let workoutMinutes = 0;
       if (data.didWorkout && data.workoutDate) {
         for (const session of workoutSessions) {
-          // Only submit sessions with at least start/end time
           if (session.startTime && session.endTime) {
-            // Combine date with times for full datetime
-            const startAt = `${data.workoutDate}T${session.startTime}`;
-            const endAt = `${data.workoutDate}T${session.endTime}`;
-            
-            // Collect all non-empty strength exercises
-            const exercises = session.strength
-              .filter(ex => ex.exercise.trim())
-              .map(ex => `${ex.exercise} - ${ex.weight} x ${ex.reps}`)
-              .concat(
-                session.cardio
-                  .filter(c => c.type.trim())
-                  .map(c => `${c.type} - ${c.duration}`)
-              );
-            
-            await apiRequest('POST', '/api/workouts', {
-              date: data.workoutDate,
-              startAt: startAt,
-              endAt: endAt,
-              exercises: exercises,
-            });
+            const startParts = session.startTime.split(':');
+            const endParts = session.endTime.split(':');
+            const startMin = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+            const endMin = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+            workoutMinutes += endMin - startMin;
           }
         }
       }
 
-      // Submit weight if provided (convert lbs to kg for storage)
-      if (data.didWeighIn && data.weightLbs) {
-        const weightKg = data.weightLbs * 0.453592; // Convert lbs to kg
-        await apiRequest('POST', '/api/weight', {
-          date: today,
-          weightKg: weightKg,
-        });
+      // Convert mental rating to number
+      const mentalRatingMap: Record<string, number> = { 'great': 3, 'ok': 2, 'bad': 1 };
+      const mentalRating = mentalRatingMap[data.mentalRating] || 2;
+
+      // Convert work stress to number
+      const workStressMap: Record<string, number> = { 'low': 1, 'medium': 2, 'high': 3 };
+      const workStressLevel = data.workStress ? workStressMap[data.workStress] : undefined;
+
+      // Upsert to daily_summary - this is the main data store
+      const dailySummaryData: Record<string, any> = {
+        date: today,
+        sleepHours: sleepHours > 0 ? sleepHours : undefined,
+        bedtime: data.sleepStart || undefined,
+        wakeTime: data.sleepEnd || undefined,
+        dreamType: data.dreamType,
+        dreamDesc: data.dreamType !== 'none' ? (data.dreamDescription || 'No Memory') : undefined,
+        mentalRating: mentalRating,
+        workoutMinutes: workoutMinutes > 0 ? workoutMinutes : undefined,
+        weightKg: data.didWeighIn && data.weightLbs ? data.weightLbs * 0.453592 : undefined,
+        meditationMinutes: data.didMeditate && data.meditationMin ? data.meditationMin : undefined,
+        workStressLevel: workStressLevel,
+        hobbiesMinutes: data.hobbyDuration,
+        socialMinutes: data.socialDuration,
+        caloriesTotal: data.caloriesConsumed,
+        drugUseFlag: data.didUseDrugs,
+      };
+
+      // Remove undefined fields
+      Object.keys(dailySummaryData).forEach(key => {
+        if (dailySummaryData[key] === undefined) {
+          delete dailySummaryData[key];
+        }
+      });
+
+      // Save to daily_summary via API
+      const summaryResponse = await fetch('/api/daily-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dailySummaryData),
+      });
+
+      if (!summaryResponse.ok) {
+        throw new Error('Failed to save daily summary');
       }
 
-      // Submit meditation if done
-      if (data.didMeditate && data.meditationMin) {
-        await apiRequest('POST', '/api/meditation', {
-          date: today,
-          durationMin: data.meditationMin,
-        });
-      }
-
-      // Submit yesterday's work stress
-      if (data.workStress) {
-        await apiRequest('POST', '/api/work', {
-          date: yesterday,
-          stress: data.workStress,
-          why: data.workWhy,
-        });
-      }
-
-      // Submit yesterday's hobbies
-      if (data.yesterdayHobby) {
-        await apiRequest('POST', '/api/hobbies', {
-          date: yesterday,
-          hobby: data.yesterdayHobby,
-          durationMin: data.hobbyDuration || 0,
-        });
-      }
-
-      // Submit yesterday's social
-      if (data.yesterdaySocial) {
-        await apiRequest('POST', '/api/social', {
-          date: yesterday,
-          activity: data.yesterdaySocial,
-          durationMin: data.socialDuration || 0,
-        });
-      }
-      
-      // Submit calories/meals if provided
+      // Also save nutrition to nutrition_logs if calories provided
       if (data.caloriesConsumed) {
-        await apiRequest('POST', '/api/meals', {
-          date: yesterday,
-          calories: data.caloriesConsumed,
-          proteinG: data.proteinG,
-          fatG: data.fatG,
-          carbsG: data.carbsG,
-          notes: data.mealsDescription,
-        });
+        try {
+          await apiRequest('POST', '/api/meals', {
+            date: yesterday,
+            calories: data.caloriesConsumed,
+            proteinG: data.proteinG,
+            fatG: data.fatG,
+            carbsG: data.carbsG,
+            notes: data.mealsDescription,
+          });
+        } catch (e) {
+          // Log error but don't fail the whole check-in
+          console.error('Failed to save nutrition log:', e);
+        }
       }
 
       // Submit drug use logs if applicable
       if (data.didUseDrugs) {
         for (const entry of drugEntries) {
           if (entry.drugName.trim()) {
-            await apiRequest('POST', '/api/recovery/drug-use', {
-              date: yesterday,
-              drugName: entry.drugName,
-              amount: entry.amount,
-              isPrescribed: entry.isPrescribed,
-            });
+            try {
+              await apiRequest('POST', '/api/recovery/drug-use', {
+                date: yesterday,
+                drugName: entry.drugName,
+                amount: entry.amount,
+                isPrescribed: entry.isPrescribed,
+              });
+            } catch (e) {
+              console.error('Failed to save drug use log:', e);
+            }
           }
         }
       }
@@ -417,11 +406,15 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
       if (data.isInRecovery) {
         for (const entry of withdrawalEntries) {
           if (entry.drugName.trim() && entry.symptoms.trim()) {
-            await apiRequest('POST', '/api/recovery/withdrawal', {
-              date: yesterday,
-              drugName: entry.drugName,
-              symptoms: entry.symptoms,
-            });
+            try {
+              await apiRequest('POST', '/api/recovery/withdrawal', {
+                date: yesterday,
+                drugName: entry.drugName,
+                symptoms: entry.symptoms,
+              });
+            } catch (e) {
+              console.error('Failed to save withdrawal log:', e);
+            }
           }
         }
       }

@@ -1,7 +1,11 @@
 "use client";
 
 // PBJ Health - Sleep Logging Page
-// Asks for: went to sleep and woke up times, computes sleep_hours
+// Mirrors daily check-in sleep section:
+// - Went to bed (datetime)
+// - Woke up (datetime)
+// - Dream type: None / Dream / Nightmare
+// - If Dream or Nightmare: show description textarea
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/auth/AuthProvider';
 import { DashboardCard } from '@/components/DashboardCard';
@@ -9,6 +13,8 @@ import { DateSelector } from '@/components/DateSelector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ArrowLeft, Moon } from 'lucide-react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -34,6 +40,8 @@ export default function SleepPage() {
   const [selectedDate, setSelectedDate] = useState(getTodayISO());
   const [bedtime, setBedtime] = useState('');
   const [wakeTime, setWakeTime] = useState('');
+  const [dreamType, setDreamType] = useState<'none' | 'dream' | 'nightmare'>('none');
+  const [dreamDesc, setDreamDesc] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -56,10 +64,27 @@ export default function SleepPage() {
     } else {
       setWakeTime('');
     }
+    if (existingData?.dream_type) {
+      setDreamType(existingData.dream_type as 'none' | 'dream' | 'nightmare');
+    } else {
+      setDreamType('none');
+    }
+    if (existingData?.dream_desc) {
+      setDreamDesc(existingData.dream_desc);
+    } else {
+      setDreamDesc('');
+    }
   }, [existingData, selectedDate]);
 
   const mutation = useMutation({
-    mutationFn: async (data: { date: string; sleepHours: number; bedtime?: string; wakeTime?: string }) => {
+    mutationFn: async (data: { 
+      date: string; 
+      sleepHours: number; 
+      bedtime?: string; 
+      wakeTime?: string;
+      dreamType?: string;
+      dreamDesc?: string;
+    }) => {
       const response = await fetch('/api/daily-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -69,12 +94,20 @@ export default function SleepPage() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: 'Sleep logged successfully!' });
+      toast({ 
+        title: 'Sleep logged successfully!',
+        className: 'bg-green-500 text-white fixed bottom-4 right-4'
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/daily-summary'] });
       queryClient.invalidateQueries({ queryKey: ['/api/analytics/7d'] });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ 
+        title: 'Error', 
+        description: error.message, 
+        variant: 'destructive',
+        className: 'fixed bottom-4 right-4'
+      });
     },
   });
 
@@ -82,28 +115,44 @@ export default function SleepPage() {
     e.preventDefault();
     
     if (!bedtime || !wakeTime) {
-      toast({ title: 'Error', description: 'Please enter both bedtime and wake time', variant: 'destructive' });
+      toast({ 
+        title: 'Error', 
+        description: 'Please enter both bedtime and wake time', 
+        variant: 'destructive',
+        className: 'fixed bottom-4 right-4'
+      });
       return;
     }
     
     const hours = computeSleepHours(bedtime, wakeTime);
     
     if (hours <= 0) {
-      toast({ title: 'Error', description: 'Wake time must be after bedtime', variant: 'destructive' });
+      toast({ 
+        title: 'Error', 
+        description: 'Wake time must be after bedtime', 
+        variant: 'destructive',
+        className: 'fixed bottom-4 right-4'
+      });
       return;
     }
+    
+    // Auto-fill "No Memory" if dream/nightmare selected but no description
+    const finalDreamDesc = (dreamType !== 'none' && !dreamDesc.trim()) ? 'No Memory' : dreamDesc;
     
     mutation.mutate({ 
       date: selectedDate, 
       sleepHours: hours,
       bedtime,
       wakeTime,
+      dreamType,
+      dreamDesc: dreamType !== 'none' ? finalDreamDesc : undefined,
     });
   };
 
   if (!isAuthenticated) return null;
 
   const sleepHours = computeSleepHours(bedtime, wakeTime);
+  const showDreamDesc = dreamType !== 'none';
 
   return (
     <div className="min-h-screen bg-background">
@@ -129,7 +178,7 @@ export default function SleepPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="bedtime">Went to sleep</Label>
+                <Label htmlFor="bedtime">Went to bed</Label>
                 <Input
                   id="bedtime"
                   type="datetime-local"
@@ -157,8 +206,48 @@ export default function SleepPage() {
                 </p>
               </div>
             )}
+
+            {/* Dream Type - matches daily check-in */}
+            <div>
+              <Label className="mb-3 block">Did you have any dreams?</Label>
+              <RadioGroup 
+                value={dreamType} 
+                onValueChange={(val) => setDreamType(val as 'none' | 'dream' | 'nightmare')}
+                className="flex flex-wrap gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="none" id="none" />
+                  <Label htmlFor="none" className="font-normal cursor-pointer">None</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="dream" id="dream" />
+                  <Label htmlFor="dream" className="font-normal cursor-pointer">Dream</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="nightmare" id="nightmare" />
+                  <Label htmlFor="nightmare" className="font-normal cursor-pointer">Nightmare</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Dream Description - only show if Dream or Nightmare selected */}
+            {showDreamDesc && (
+              <div>
+                <Label htmlFor="dreamDesc">Describe your {dreamType}</Label>
+                <Textarea
+                  id="dreamDesc"
+                  value={dreamDesc}
+                  onChange={(e) => setDreamDesc(e.target.value)}
+                  placeholder="Leave blank to auto-fill 'No Memory'"
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Leave blank to auto-fill "No Memory"
+                </p>
+              </div>
+            )}
             
-            <Button type="submit" disabled={mutation.isPending} data-testid="button-log-sleep">
+            <Button type="submit" disabled={mutation.isPending} className="w-full" data-testid="button-log-sleep">
               {mutation.isPending ? 'Logging...' : 'Log Sleep'}
             </Button>
           </form>
