@@ -205,9 +205,8 @@ export default function ProfileDetailed() {
                     <SelectValue placeholder="Units" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="ft/in">ft/in</SelectItem>
                     <SelectItem value="cm">cm</SelectItem>
-                    <SelectItem value="in">in</SelectItem>
-                    <SelectItem value="ft">ft/in</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -222,9 +221,9 @@ export default function ProfileDetailed() {
               <div className="mt-2 p-3 bg-muted rounded-md">
                 {currentWeight ? (
                   <p className="text-lg font-medium">
-                    {profile.units_weight === 'lbs' 
-                      ? `${(currentWeight * 2.20462).toFixed(1)} lbs`
-                      : `${currentWeight.toFixed(1)} kg`
+                    {profile.units_weight === 'kg' 
+                      ? `${currentWeight.toFixed(1)} kg`
+                      : `${(currentWeight * 2.20462).toFixed(1)} lb`
                     }
                   </p>
                 ) : (
@@ -247,14 +246,14 @@ export default function ProfileDetailed() {
                   placeholder="Target weight"
                 />
                 <Select 
-                  value={edit.units_weight !== undefined ? edit.units_weight : (profile.units_weight || "lbs")} 
+                  value={edit.units_weight !== undefined ? edit.units_weight : (profile.units_weight || "lb")} 
                   onValueChange={(value) => setEdit((x:any)=>({...x, units_weight: value}))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Units" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="lbs">lbs</SelectItem>
+                    <SelectItem value="lb">lb</SelectItem>
                     <SelectItem value="kg">kg</SelectItem>
                   </SelectContent>
                 </Select>
@@ -277,14 +276,17 @@ export default function ProfileDetailed() {
             {/* Sleep Goal */}
             <div>
               <Label htmlFor="sleepGoal" className="text-base font-semibold">Sleep Goal:</Label>
-              <Input 
-                id="sleepGoal"
-                type="number"
-                className="mt-2"
-                defaultValue={profile.sleep_target_minutes || ""} 
-                onChange={(e)=>setEdit((x:any)=>({...x, sleep_target_minutes:+e.target.value}))} 
-                placeholder="Sleep target (minutes)"
-              />
+              <div className="flex items-center gap-2 mt-2">
+                <Input 
+                  id="sleepGoal"
+                  type="number"
+                  className="w-24"
+                  defaultValue={profile.sleep_target_minutes || ""} 
+                  onChange={(e)=>setEdit((x:any)=>({...x, sleep_target_minutes:+e.target.value}))} 
+                  placeholder="0"
+                />
+                <span className="text-muted-foreground">minutes</span>
+              </div>
               {sleepConversion.total > 0 && (
                 <p className="text-sm text-muted-foreground mt-2">
                   {sleepConversion.total} minutes = {sleepConversion.hours} hours {sleepConversion.minutes} minutes
@@ -297,14 +299,19 @@ export default function ProfileDetailed() {
             {/* Workout Goal */}
             <div>
               <Label htmlFor="workoutGoal" className="text-base font-semibold">Workout Goal:</Label>
-              <Input 
-                id="workoutGoal"
-                type="number"
-                className="mt-2"
-                defaultValue={profile.workout_days_target || ""} 
-                onChange={(e)=>setEdit((x:any)=>({...x, workout_days_target:+e.target.value}))} 
-                placeholder="Workout days per week"
-              />
+              <div className="flex items-center gap-2 mt-2">
+                <Input 
+                  id="workoutGoal"
+                  type="number"
+                  className="w-24"
+                  min="0"
+                  max="7"
+                  defaultValue={profile.workout_days_target || ""} 
+                  onChange={(e)=>setEdit((x:any)=>({...x, workout_days_target:+e.target.value}))} 
+                  placeholder="0"
+                />
+                <span className="text-muted-foreground">days per week</span>
+              </div>
             </div>
           </div>
 
