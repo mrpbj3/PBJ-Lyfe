@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/auth/AuthProvider';
 import { DashboardCard } from '@/components/DashboardCard';
+import { DateSelector } from '@/components/DateSelector';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,22 +11,33 @@ import { Link } from 'wouter';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { getYesterdayISO } from '@/lib/dateUtils';
+import { getTodayISO, getYesterdayISO } from '@/lib/dateUtils';
 
 export default function Work() {
   const { isAuthenticated } = useAuth();
+  const [selectedDate, setSelectedDate] = useState(getYesterdayISO());
   const [stress, setStress] = useState<'low' | 'medium' | 'high'>('medium');
   const [why, setWhy] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Map stress to numeric value for daily_summary
+  const stressToNumber = (s: string): number => {
+    switch (s) {
+      case 'low': return 1;
+      case 'medium': return 2;
+      case 'high': return 3;
+      default: return 2;
+    }
+  };
+
   const mutation = useMutation({
-    mutationFn: async (data: { date: string; stress: string; why?: string }) => {
-      await apiRequest('POST', '/api/work', data);
+    mutationFn: async (data: { date: string; workStressLevel: number }) => {
+      await apiRequest('POST', '/api/daily-summary', data);
     },
     onSuccess: () => {
       toast({ title: 'Work log saved successfully!' });
-      queryClient.invalidateQueries({ queryKey: ['/api/work'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/analytics/7d'] });
       setWhy('');
     },
     onError: (error: Error) => {
@@ -36,9 +48,8 @@ export default function Work() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     mutation.mutate({ 
-      date: getYesterdayISO(), 
-      stress,
-      why: why.trim() || undefined
+      date: selectedDate, 
+      workStressLevel: stressToNumber(stress)
     });
   };
 
@@ -48,7 +59,7 @@ export default function Work() {
     <div className="min-h-screen bg-background">
       <header className="border-b sticky top-0 bg-background/95 backdrop-blur z-50">
         <div className="max-w-2xl mx-auto px-4 py-4">
-          <Link href="/">
+          <Link href="/today">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Today
@@ -56,9 +67,12 @@ export default function Work() {
           </Link>
         </div>
       </header>
+
+      <DateSelector date={selectedDate} onDateChange={setSelectedDate} />
+
       <div className="max-w-2xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Work & Stress</h1>
-        <DashboardCard title="How was work yesterday?">
+        <DashboardCard title="How was work?">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <Label>Stress Level</Label>
@@ -96,7 +110,7 @@ export default function Work() {
                 id="why"
                 value={why}
                 onChange={(e) => setWhy(e.target.value)}
-                placeholder="What made work stressful or easy today?"
+                placeholder="What made work stressful or easy?"
                 className="mt-2"
                 rows={3}
                 data-testid="input-work-why"

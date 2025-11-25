@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/auth/AuthProvider';
 import { DashboardCard } from '@/components/DashboardCard';
+import { DateSelector } from '@/components/DateSelector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,22 +11,23 @@ import { Link } from 'wouter';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { getTodayISO, getYesterdayISO } from '@/lib/dateUtils';
+import { getYesterdayISO } from '@/lib/dateUtils';
 
 export default function Hobbies() {
   const { isAuthenticated } = useAuth();
+  const [selectedDate, setSelectedDate] = useState(getYesterdayISO());
   const [hobby, setHobby] = useState('');
   const [duration, setDuration] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async (data: { date: string; hobby: string; durationMin?: number }) => {
-      await apiRequest('POST', '/api/hobbies', data);
+    mutationFn: async (data: { date: string; hobbiesMinutes: number }) => {
+      await apiRequest('POST', '/api/daily-summary', data);
     },
     onSuccess: () => {
       toast({ title: 'Hobby logged successfully!' });
-      queryClient.invalidateQueries({ queryKey: ['/api/hobbies'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/analytics/7d'] });
       setHobby('');
       setDuration('');
     },
@@ -36,14 +38,14 @@ export default function Hobbies() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hobby.trim()) {
-      toast({ title: 'Error', description: 'Please enter a hobby', variant: 'destructive' });
+    const minutes = parseInt(duration) || 0;
+    if (!hobby.trim() && minutes === 0) {
+      toast({ title: 'Error', description: 'Please enter a hobby or duration', variant: 'destructive' });
       return;
     }
     mutation.mutate({ 
-      date: getYesterdayISO(), 
-      hobby: hobby.trim(),
-      durationMin: duration ? parseInt(duration) : undefined
+      date: selectedDate, 
+      hobbiesMinutes: minutes
     });
   };
 
@@ -53,7 +55,7 @@ export default function Hobbies() {
     <div className="min-h-screen bg-background">
       <header className="border-b sticky top-0 bg-background/95 backdrop-blur z-50">
         <div className="max-w-2xl mx-auto px-4 py-4">
-          <Link href="/">
+          <Link href="/today">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Today
@@ -61,9 +63,12 @@ export default function Hobbies() {
           </Link>
         </div>
       </header>
+
+      <DateSelector date={selectedDate} onDateChange={setSelectedDate} />
+
       <div className="max-w-2xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Hobbies</h1>
-        <DashboardCard title="What hobbies did you do yesterday?">
+        <DashboardCard title="Log your hobby time">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <Label htmlFor="hobby">Hobby Activity</Label>
@@ -78,7 +83,7 @@ export default function Hobbies() {
             </div>
             
             <div>
-              <Label htmlFor="duration">Duration (minutes, optional)</Label>
+              <Label htmlFor="duration">Duration (minutes)</Label>
               <Input
                 id="duration"
                 type="number"

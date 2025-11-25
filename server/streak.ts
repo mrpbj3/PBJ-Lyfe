@@ -27,7 +27,23 @@ export async function getCurrentStreak(userId: string): Promise<CurrentStreakRes
       };
     }
 
-    // Pull last 120 days to ensure we have enough data for streak calculation
+    // Try using RPC first
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_current_streak');
+      
+      if (!rpcError && rpcData) {
+        // RPC returns object with count and color
+        return {
+          count: rpcData.count || 0,
+          color: rpcData.color || 'red',
+          overall: rpcData.overall || rpcData.count || 0,
+        };
+      }
+    } catch (rpcErr) {
+      console.log("RPC get_current_streak not available, falling back to direct query");
+    }
+
+    // Fallback: Pull last 120 days to ensure we have enough data for streak calculation
     const since = new Date();
     since.setDate(since.getDate() - 120);
     const sinceISO = since.toISOString().split('T')[0];
@@ -35,7 +51,7 @@ export async function getCurrentStreak(userId: string): Promise<CurrentStreakRes
     // Get data from daily_summary with all needed fields
     const { data: summaryData, error } = await supabase
       .from('daily_summary')
-      .select('summary_date, calories_total, calorie_target, sleep_hours, did_workout, streak_color')
+      .select('summary_date, calories_total, calorie_target, sleep_hours, workout_minutes, streak_color')
       .eq('user_id', userId)
       .gte('summary_date', sinceISO)
       .order('summary_date', { ascending: false });
@@ -51,7 +67,7 @@ export async function getCurrentStreak(userId: string): Promise<CurrentStreakRes
       calories_total: row.calories_total,
       calorie_target: row.calorie_target,
       sleep_hours: row.sleep_hours,
-      did_workout: row.did_workout,
+      did_workout: (row.workout_minutes || 0) > 0,
       streak_color: row.streak_color,
     }));
 

@@ -18,6 +18,7 @@ import Weight from "@/pages/weight";
 import Meals from "@/pages/meals";
 import Nutrition from "@/pages/nutrition";
 import Workouts from "@/pages/workouts";
+import WorkoutDetail from "@/pages/workouts/[date]";
 import Mental from "@/pages/mental";
 import Meditation from "@/pages/meditation";
 import Dreams from "@/pages/dreams";
@@ -79,6 +80,9 @@ function Router() {
       </Route>
       <Route path="/workouts">
         <RequireAuth><Workouts /></RequireAuth>
+      </Route>
+      <Route path="/workouts/:date">
+        <RequireAuth><WorkoutDetail /></RequireAuth>
       </Route>
       <Route path="/mental">
         <RequireAuth><Mental /></RequireAuth>

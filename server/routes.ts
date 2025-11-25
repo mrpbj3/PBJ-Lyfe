@@ -490,6 +490,93 @@ Use your best nutritional knowledge to estimate reasonable values.`;
     }
   });
 
+  // DAILY SUMMARY - Upsert daily summary record
+  // This is used by all "How's Lyfe" pages to update daily_summary for a specific date
+  app.post("/api/daily-summary", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { date, ...fields } = req.body;
+
+      if (!date) {
+        return res.status(400).json({ message: "date is required" });
+      }
+
+      // Map frontend field names to database column names
+      const dbFields: Record<string, any> = {
+        user_id: userId,
+        summary_date: date,
+      };
+
+      // Map all possible fields
+      if (fields.sleepHours !== undefined) dbFields.sleep_hours = fields.sleepHours;
+      if (fields.weightKg !== undefined) dbFields.weight_kg = fields.weightKg;
+      if (fields.workoutMinutes !== undefined) dbFields.workout_minutes = fields.workoutMinutes;
+      if (fields.meditationMinutes !== undefined) dbFields.meditation_minutes = fields.meditationMinutes;
+      if (fields.steps !== undefined) dbFields.steps = fields.steps;
+      if (fields.mentalRating !== undefined) dbFields.mental_rating = fields.mentalRating;
+      if (fields.workStressLevel !== undefined) dbFields.work_stress_level = fields.workStressLevel;
+      if (fields.dreamType !== undefined) dbFields.dream_type = fields.dreamType;
+      if (fields.dreamDesc !== undefined) dbFields.dream_desc = fields.dreamDesc;
+      if (fields.socialMinutes !== undefined) dbFields.social_minutes = fields.socialMinutes;
+      if (fields.hobbiesMinutes !== undefined) dbFields.hobbies_minutes = fields.hobbiesMinutes;
+      if (fields.drugUseFlag !== undefined) dbFields.drug_use_flag = fields.drugUseFlag;
+      if (fields.caloriesTotal !== undefined) dbFields.calories_total = fields.caloriesTotal;
+      if (fields.calorieTarget !== undefined) dbFields.calorie_target = fields.calorieTarget;
+      if (fields.workoutBreakdown !== undefined) dbFields.workout_breakdown = fields.workoutBreakdown;
+      if (fields.workoutType !== undefined) dbFields.workout_type = fields.workoutType;
+      if (fields.workoutName !== undefined) dbFields.workout_name = fields.workoutName;
+
+      // Calculate calorie_ratio if both calories and target are provided
+      if (dbFields.calories_total !== undefined && dbFields.calorie_target !== undefined && dbFields.calorie_target > 0) {
+        dbFields.calorie_ratio = dbFields.calories_total / dbFields.calorie_target;
+      }
+
+      // Upsert into daily_summary
+      const { data, error } = await supabase
+        .from('daily_summary')
+        .upsert(dbFields, {
+          onConflict: 'user_id,summary_date',
+        })
+        .select();
+
+      if (error) {
+        console.error("Error upserting daily_summary:", error);
+        return res.status(500).json({ message: "Failed to save daily summary" });
+      }
+
+      res.json(data?.[0] || { ok: true });
+    } catch (error) {
+      console.error("Error in daily-summary route:", error);
+      res.status(500).json({ message: "Failed to save daily summary" });
+    }
+  });
+
+  // DAILY SUMMARY - Get daily summary for a specific date
+  app.get("/api/daily-summary/:date", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { date } = req.params;
+
+      const { data, error } = await supabase
+        .from('daily_summary')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('summary_date', date)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+        console.error("Error fetching daily_summary:", error);
+        return res.status(500).json({ message: "Failed to fetch daily summary" });
+      }
+
+      // Return the data or empty object if not found
+      res.json(data || {});
+    } catch (error) {
+      console.error("Error fetching daily summary:", error);
+      res.status(500).json({ message: "Failed to fetch daily summary" });
+    }
+  });
+
   // CHECKINS - Get recent check-ins
   app.get("/api/checkins/recent", isAuthenticated, async (req: any, res: Response) => {
     try {
@@ -780,8 +867,6 @@ Use your best nutritional knowledge to estimate reasonable values.`;
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 7);
       const start = startDate.toISOString().split('T')[0];
-
-      const supabase = await setupSupabaseServer(req);
 
       const [summaryCount, mealsCount, sleepCount, workoutsCount] = await Promise.all([
         supabase.from('daily_summary').select('*', { count: 'exact', head: true }).eq('user_id', userId).gte('summary_date', start).lte('summary_date', endDate),
