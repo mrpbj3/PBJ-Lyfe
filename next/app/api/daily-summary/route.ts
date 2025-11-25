@@ -42,6 +42,10 @@ export async function POST(request: NextRequest) {
     if (fields.drugUseFlag !== undefined) dbFields.drug_use_flag = fields.drugUseFlag;
     if (fields.caloriesTotal !== undefined) dbFields.calories_total = fields.caloriesTotal;
     if (fields.calorieTarget !== undefined) dbFields.calorie_target = fields.calorieTarget;
+    // New fields for bedtime/waketime and recovery notes
+    if (fields.bedtime !== undefined) dbFields.bedtime = fields.bedtime;
+    if (fields.wakeTime !== undefined) dbFields.wake_time = fields.wakeTime;
+    if (fields.recoveryNotes !== undefined) dbFields.recovery_notes = fields.recoveryNotes;
 
     // Calculate calorie ratio if both values are present
     if (dbFields.calories_total && dbFields.calorie_target) {
