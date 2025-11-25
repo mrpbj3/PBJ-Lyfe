@@ -10,10 +10,11 @@ import { Link } from 'wouter';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { getTodayISO, getYesterdayISO } from '@/lib/dateUtils';
+import { getTodayISO } from '@/lib/dateUtils';
 
 export default function Hobbies() {
   const { isAuthenticated } = useAuth();
+  const [selectedDate, setSelectedDate] = useState(getTodayISO());
   const [hobby, setHobby] = useState('');
   const [duration, setDuration] = useState('');
   const { toast } = useToast();
@@ -24,13 +25,21 @@ export default function Hobbies() {
       await apiRequest('POST', '/api/hobbies', data);
     },
     onSuccess: () => {
-      toast({ title: 'Hobby logged successfully!' });
+      toast({ 
+        title: 'Hobby logged successfully!',
+        className: 'bg-green-500 text-white border-green-600'
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/hobbies'] });
       setHobby('');
       setDuration('');
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ 
+        title: 'Error', 
+        description: error.message, 
+        variant: 'destructive',
+        className: 'bg-red-500 text-white border-red-600'
+      });
     },
   });
 
@@ -41,7 +50,7 @@ export default function Hobbies() {
       return;
     }
     mutation.mutate({ 
-      date: getYesterdayISO(), 
+      date: selectedDate, 
       hobby: hobby.trim(),
       durationMin: duration ? parseInt(duration) : undefined
     });
@@ -63,7 +72,22 @@ export default function Hobbies() {
       </header>
       <div className="max-w-2xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Hobbies</h1>
-        <DashboardCard title="What hobbies did you do yesterday?">
+        
+        {/* Date Picker */}
+        <DashboardCard title="Select Date" className="mb-6">
+          <div>
+            <Label htmlFor="date">Date</Label>
+            <Input
+              id="date"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              data-testid="input-hobbies-date"
+            />
+          </div>
+        </DashboardCard>
+
+        <DashboardCard title="Log Hobby Activity">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <Label htmlFor="hobby">Hobby Activity</Label>

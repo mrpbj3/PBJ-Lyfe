@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DashboardCard } from "@/components/DashboardCard";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/auth/AuthProvider";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
@@ -28,22 +28,66 @@ export default function ProfileDetailed() {
     enabled: !!user,
   });
 
+  // Fetch latest weight from body_metrics
+  const { data: latestWeight } = useQuery({
+    queryKey: ["weight", "latest", user?.id],
+    queryFn: () => apiClient('/api/weight'),
+    enabled: !!user,
+  });
+
   const [edit, setEdit] = useState<any>({});
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Get the current sleep goal value (from edit state or profile)
+  const currentSleepMinutes = edit.sleep_target_minutes !== undefined 
+    ? edit.sleep_target_minutes 
+    : (profile?.sleep_target_minutes || 0);
+
+  // Convert minutes to hours and remaining minutes
+  const sleepConversion = useMemo(() => {
+    const mins = Number(currentSleepMinutes) || 0;
+    const hours = Math.floor(mins / 60);
+    const remainingMins = mins % 60;
+    return { hours, minutes: remainingMins, total: mins };
+  }, [currentSleepMinutes]);
+
+  // Get current weight from latest weigh-in
+  const currentWeight = useMemo(() => {
+    if (latestWeight && Array.isArray(latestWeight) && latestWeight.length > 0) {
+      // Weight is stored in kg, return the most recent one
+      return latestWeight[0]?.weightKg;
+    }
+    return null;
+  }, [latestWeight]);
 
   if (!profile) return <div className="p-8">Loading…</div>;
 
   const save = async () => {
+    setIsSaving(true);
     try {
       const { error } = await supabase.from("profiles").update(edit).eq("id", user?.id);
       if (error) {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
+        toast({ 
+          title: "Sorry, we could not save your changes. Please try again later.",
+          variant: "destructive",
+          className: "bg-red-500 text-white border-red-600"
+        });
         return;
       }
       await refetch();
       setEdit({});
-      toast({ title: "Success", description: "Profile updated successfully!" });
+      toast({ 
+        title: "Changes Saved!",
+        className: "bg-green-500 text-white border-green-600"
+      });
     } catch (err) {
-      toast({ title: "Error", description: "Failed to update profile", variant: "destructive" });
+      toast({ 
+        title: "Sorry, we could not save your changes. Please try again later.",
+        variant: "destructive",
+        className: "bg-red-500 text-white border-red-600"
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -100,87 +144,6 @@ export default function ProfileDetailed() {
               </div>
             </div>
 
-            {/* Weight */}
-            <div>
-              <Label htmlFor="weight" className="text-base font-semibold">Weight:</Label>
-              <div className="grid sm:grid-cols-2 gap-4 mt-2">
-                <Input 
-                  id="weight"
-                  type="number"
-                  step="0.1"
-                  defaultValue={profile.starting_weight || ""} 
-                  onChange={(e)=>setEdit((x:any)=>({...x, starting_weight:+e.target.value}))} 
-                  placeholder="Starting weight"
-                />
-                <Input 
-                  id="weightUnits"
-                  defaultValue={profile.units_weight || ""} 
-                  onChange={(e)=>setEdit((x:any)=>({...x, units_weight:e.target.value}))} 
-                  placeholder="Units (e.g., lbs, kg)"
-                />
-              </div>
-            </div>
-
-            {/* Height */}
-            <div>
-              <Label htmlFor="height" className="text-base font-semibold">Height:</Label>
-              <div className="grid sm:grid-cols-2 gap-4 mt-2">
-                <Input 
-                  id="height"
-                  type="number"
-                  step="0.1"
-                  defaultValue={profile.starting_height_cm || ""} 
-                  onChange={(e)=>setEdit((x:any)=>({...x, starting_height_cm:+e.target.value}))} 
-                  placeholder="Starting height"
-                />
-                <Input 
-                  id="heightUnits"
-                  defaultValue={profile.units_height || ""} 
-                  onChange={(e)=>setEdit((x:any)=>({...x, units_height:e.target.value}))} 
-                  placeholder="Units (e.g., cm, in)"
-                />
-              </div>
-            </div>
-
-            {/* Calorie Target */}
-            <div>
-              <Label htmlFor="calorieTarget" className="text-base font-semibold">Calorie Target:</Label>
-              <Input 
-                id="calorieTarget"
-                type="number"
-                className="mt-2"
-                defaultValue={profile.calorie_target || ""} 
-                onChange={(e)=>setEdit((x:any)=>({...x, calorie_target:+e.target.value}))} 
-                placeholder="Daily calorie target"
-              />
-            </div>
-
-            {/* Sleep Goal */}
-            <div>
-              <Label htmlFor="sleepGoal" className="text-base font-semibold">Sleep Goal:</Label>
-              <Input 
-                id="sleepGoal"
-                type="number"
-                className="mt-2"
-                defaultValue={profile.sleep_target_minutes || ""} 
-                onChange={(e)=>setEdit((x:any)=>({...x, sleep_target_minutes:+e.target.value}))} 
-                placeholder="Sleep target (minutes)"
-              />
-            </div>
-
-            {/* Workout Goal */}
-            <div>
-              <Label htmlFor="workoutGoal" className="text-base font-semibold">Workout Goal:</Label>
-              <Input 
-                id="workoutGoal"
-                type="number"
-                className="mt-2"
-                defaultValue={profile.workout_days_target || ""} 
-                onChange={(e)=>setEdit((x:any)=>({...x, workout_days_target:+e.target.value}))} 
-                placeholder="Workout days per week"
-              />
-            </div>
-
             {/* Profile Color */}
             <div>
               <Label htmlFor="profileColor" className="text-base font-semibold">Profile Color:</Label>
@@ -215,11 +178,140 @@ export default function ProfileDetailed() {
               </div>
             </div>
           </div>
-
-          <Button onClick={save} className="mt-6">Save</Button>
         </DashboardCard>
 
-        {/* SECTION 2: Recent Check-Ins */}
+        {/* SECTION 2: Goals */}
+        <DashboardCard title="Goals">
+          <div className="space-y-4">
+            {/* Height */}
+            <div>
+              <Label className="text-base font-semibold">Height:</Label>
+              <div className="grid sm:grid-cols-2 gap-4 mt-2">
+                <Input 
+                  id="height"
+                  type="number"
+                  step="0.1"
+                  defaultValue={profile.starting_height_cm || ""} 
+                  onChange={(e)=>setEdit((x:any)=>({...x, starting_height_cm:+e.target.value}))} 
+                  placeholder="Height"
+                />
+                <Select 
+                  value={edit.units_height !== undefined ? edit.units_height : (profile.units_height || "cm")} 
+                  onValueChange={(value) => setEdit((x:any)=>({...x, units_height: value}))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Units" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cm">cm</SelectItem>
+                    <SelectItem value="in">in</SelectItem>
+                    <SelectItem value="ft">ft/in</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Your height: {profile.starting_height_cm || 0} {profile.units_height || 'cm'}
+              </p>
+            </div>
+
+            {/* Current Weight (read-only, from most recent weigh-in) */}
+            <div>
+              <Label className="text-base font-semibold">Current Weight:</Label>
+              <div className="mt-2 p-3 bg-muted rounded-md">
+                {currentWeight ? (
+                  <p className="text-lg font-medium">
+                    {profile.units_weight === 'lbs' 
+                      ? `${(currentWeight * 2.20462).toFixed(1)} lbs`
+                      : `${currentWeight.toFixed(1)} kg`
+                    }
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground">No weigh-in recorded yet</p>
+                )}
+                <p className="text-xs text-muted-foreground">Auto-filled from most recent weigh-in</p>
+              </div>
+            </div>
+
+            {/* Target Weight */}
+            <div>
+              <Label className="text-base font-semibold">Target Weight:</Label>
+              <div className="grid sm:grid-cols-2 gap-4 mt-2">
+                <Input 
+                  id="targetWeight"
+                  type="number"
+                  step="0.1"
+                  defaultValue={profile.target_weight || ""} 
+                  onChange={(e)=>setEdit((x:any)=>({...x, target_weight:+e.target.value}))} 
+                  placeholder="Target weight"
+                />
+                <Select 
+                  value={edit.units_weight !== undefined ? edit.units_weight : (profile.units_weight || "lbs")} 
+                  onValueChange={(value) => setEdit((x:any)=>({...x, units_weight: value}))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Units" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="lbs">lbs</SelectItem>
+                    <SelectItem value="kg">kg</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Calorie Target */}
+            <div>
+              <Label htmlFor="calorieTarget" className="text-base font-semibold">Calorie Target:</Label>
+              <Input 
+                id="calorieTarget"
+                type="number"
+                className="mt-2"
+                defaultValue={profile.calorie_target || ""} 
+                onChange={(e)=>setEdit((x:any)=>({...x, calorie_target:+e.target.value}))} 
+                placeholder="Daily calorie target"
+              />
+            </div>
+
+            {/* Sleep Goal */}
+            <div>
+              <Label htmlFor="sleepGoal" className="text-base font-semibold">Sleep Goal:</Label>
+              <Input 
+                id="sleepGoal"
+                type="number"
+                className="mt-2"
+                defaultValue={profile.sleep_target_minutes || ""} 
+                onChange={(e)=>setEdit((x:any)=>({...x, sleep_target_minutes:+e.target.value}))} 
+                placeholder="Sleep target (minutes)"
+              />
+              {sleepConversion.total > 0 && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  {sleepConversion.total} minutes = {sleepConversion.hours} hours {sleepConversion.minutes} minutes
+                  <br />
+                  <span className="text-xs">(We recommend 6–9 hours of sleep)</span>
+                </p>
+              )}
+            </div>
+
+            {/* Workout Goal */}
+            <div>
+              <Label htmlFor="workoutGoal" className="text-base font-semibold">Workout Goal:</Label>
+              <Input 
+                id="workoutGoal"
+                type="number"
+                className="mt-2"
+                defaultValue={profile.workout_days_target || ""} 
+                onChange={(e)=>setEdit((x:any)=>({...x, workout_days_target:+e.target.value}))} 
+                placeholder="Workout days per week"
+              />
+            </div>
+          </div>
+
+          <Button onClick={save} disabled={isSaving} className="mt-6 w-full">
+            {isSaving ? 'Saving...' : 'Save all changes'}
+          </Button>
+        </DashboardCard>
+
+        {/* SECTION 3: Recent Check-Ins */}
         <DashboardCard title="Recent Check-Ins">
           {checkins && checkins.length > 0 ? (
             <div className="border rounded-lg overflow-hidden">

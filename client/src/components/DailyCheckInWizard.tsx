@@ -430,16 +430,16 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
       queryClient.invalidateQueries({ queryKey: ['/api/analytics/daily', today] });
       queryClient.invalidateQueries({ queryKey: ['/api/streaks/current'] });
       toast({
-        title: 'Check-In Complete!',
-        description: 'All your daily health data has been logged.',
+        title: 'Thanks for checking in!',
+        className: 'bg-green-500 text-white border-green-600',
       });
       onClose();
     },
     onError: (error) => {
       toast({
-        title: 'Error',
-        description: 'Failed to save check-in data. Please try again.',
+        title: "Sorry, we couldn't check you in right now. Please try again later.",
         variant: 'destructive',
+        className: 'bg-red-500 text-white border-red-600',
       });
       console.error(error);
     },

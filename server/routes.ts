@@ -405,6 +405,99 @@ Use your best nutritional knowledge to estimate reasonable values.`;
       res.status(500).json({ message: "Failed to create withdrawal log" });
     }
   });
+
+  // RECOVERY - Get drug profiles
+  app.get("/api/recovery/drug-profiles", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { data, error } = await supabase
+        .from('drug_profiles')
+        .select('id, name, in_recovery, clean_since')
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error("Error fetching drug profiles:", error);
+        return res.status(500).json({ message: "Failed to fetch drug profiles" });
+      }
+
+      res.json(data || []);
+    } catch (error) {
+      console.error("Error fetching drug profiles:", error);
+      res.status(500).json({ message: "Failed to fetch drug profiles" });
+    }
+  });
+
+  // RECOVERY - Get withdrawal notes
+  app.get("/api/recovery/withdrawal-notes", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { data, error } = await supabase
+        .from('withdrawal_symptoms')
+        .select('id, date, drug_name, symptoms')
+        .eq('user_id', userId)
+        .order('date', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error("Error fetching withdrawal notes:", error);
+        return res.status(500).json({ message: "Failed to fetch withdrawal notes" });
+      }
+
+      res.json(data || []);
+    } catch (error) {
+      console.error("Error fetching withdrawal notes:", error);
+      res.status(500).json({ message: "Failed to fetch withdrawal notes" });
+    }
+  });
+
+  // RECOVERY - Handle relapse
+  app.post("/api/recovery/relapse", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { drugId, date } = req.body;
+
+      if (!drugId) {
+        return res.status(400).json({ message: "drugId required" });
+      }
+
+      const { error } = await supabase
+        .from('drug_profiles')
+        .update({ clean_since: date || new Date().toISOString().split('T')[0] })
+        .eq('id', drugId)
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error("Error updating relapse:", error);
+        return res.status(500).json({ message: "Failed to update relapse" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating relapse:", error);
+      res.status(500).json({ message: "Failed to update relapse" });
+    }
+  });
+
+  // OCR - Weight image processing
+  app.post("/api/ocr/weight", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      // Note: This is a placeholder for OCR functionality
+      // In production, you would integrate with an OCR service like:
+      // - Google Cloud Vision
+      // - AWS Textract
+      // - OpenAI Vision API
+      
+      // For now, return a message that OCR is not configured
+      res.json({ 
+        weight: null, 
+        unit: null,
+        message: "OCR service not configured. Please enter weight manually." 
+      });
+    } catch (error) {
+      console.error("Error processing weight image:", error);
+      res.status(500).json({ message: "Failed to process image" });
+    }
+  });
   
   // CALORIE CALCULATION
   app.post("/api/calculate-calories", isAuthenticated, async (req: any, res: Response) => {
