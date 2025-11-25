@@ -14,8 +14,10 @@ export interface SevenDayData {
 
 export function useSevenDay(userId: string | undefined) {
   return useQuery<SevenDayData[]>({
-    queryKey: ["analytics-7d", userId],
-    queryFn: () => apiClient("/api/analytics/7d"),
-    enabled: !!userId,
-  });
-}
+    queryKey: ["analytics-7d"],
+    queryFn: async () => {
+      const raw = await apiClient("/api/analytics/7d");
+
+      return raw.map((r: any) => ({
+        date: r.date,
+        sleepHours: Number(r
