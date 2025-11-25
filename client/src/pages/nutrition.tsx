@@ -57,10 +57,7 @@ export default function Nutrition() {
         mealsDescription: mealsDescription,
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to calculate nutrition');
-      }
-
+      // apiRequest throws if response is not ok, so we can directly parse JSON
       const data = await response.json();
       
       if (data.calories) setCalories(data.calories.toString());

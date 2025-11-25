@@ -113,7 +113,7 @@ export default function ProfileDetailed() {
                   placeholder="Starting weight"
                 />
                 <Select 
-                  value={edit.units_weight !== undefined ? edit.units_weight : (profile.units_weight || "lb")}
+                  value={edit.units_weight ?? profile.units_weight ?? "lb"}
                   onValueChange={(value) => setEdit((x:any)=>({...x, units_weight: value}))}
                 >
                   <SelectTrigger>
@@ -140,7 +140,7 @@ export default function ProfileDetailed() {
                   placeholder="Starting height"
                 />
                 <Select 
-                  value={edit.units_height !== undefined ? edit.units_height : (profile.units_height || "ft/in")}
+                  value={edit.units_height ?? profile.units_height ?? "ft/in"}
                   onValueChange={(value) => setEdit((x:any)=>({...x, units_height: value}))}
                 >
                   <SelectTrigger>
