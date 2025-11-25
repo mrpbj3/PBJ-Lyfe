@@ -114,12 +114,18 @@ export default function ProfileDetailed() {
                   onChange={(e)=>setEdit((x:any)=>({...x, starting_weight:+e.target.value}))} 
                   placeholder="Starting weight"
                 />
-                <Input 
-                  id="weightUnits"
-                  defaultValue={profile.units_weight || ""} 
-                  onChange={(e)=>setEdit((x:any)=>({...x, units_weight:e.target.value}))} 
-                  placeholder="Units (e.g., lbs, kg)"
-                />
+                <Select 
+                  value={edit.units_weight ?? profile.units_weight ?? "lb"}
+                  onValueChange={(value) => setEdit((x:any)=>({...x, units_weight: value}))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="lb">lb</SelectItem>
+                    <SelectItem value="kg">kg</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -135,12 +141,18 @@ export default function ProfileDetailed() {
                   onChange={(e)=>setEdit((x:any)=>({...x, starting_height_cm:+e.target.value}))} 
                   placeholder="Starting height"
                 />
-                <Input 
-                  id="heightUnits"
-                  defaultValue={profile.units_height || ""} 
-                  onChange={(e)=>setEdit((x:any)=>({...x, units_height:e.target.value}))} 
-                  placeholder="Units (e.g., cm, in)"
-                />
+                <Select 
+                  value={edit.units_height ?? profile.units_height ?? "ft/in"}
+                  onValueChange={(value) => setEdit((x:any)=>({...x, units_height: value}))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ft/in">ft/in</SelectItem>
+                    <SelectItem value="cm">cm</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -160,27 +172,35 @@ export default function ProfileDetailed() {
             {/* Sleep Goal */}
             <div>
               <Label htmlFor="sleepGoal" className="text-base font-semibold">Sleep Goal:</Label>
-              <Input 
-                id="sleepGoal"
-                type="number"
-                className="mt-2"
-                defaultValue={profile.sleep_target_minutes || ""} 
-                onChange={(e)=>setEdit((x:any)=>({...x, sleep_target_minutes:+e.target.value}))} 
-                placeholder="Sleep target (minutes)"
-              />
+              <div className="flex items-center gap-2 mt-2">
+                <Input 
+                  id="sleepGoal"
+                  type="number"
+                  className="w-32"
+                  defaultValue={profile.sleep_target_minutes || ""} 
+                  onChange={(e)=>setEdit((x:any)=>({...x, sleep_target_minutes:+e.target.value}))} 
+                  placeholder="480"
+                />
+                <span className="text-muted-foreground">minutes</span>
+              </div>
             </div>
 
             {/* Workout Goal */}
             <div>
               <Label htmlFor="workoutGoal" className="text-base font-semibold">Workout Goal:</Label>
-              <Input 
-                id="workoutGoal"
-                type="number"
-                className="mt-2"
-                defaultValue={profile.workout_days_target || ""} 
-                onChange={(e)=>setEdit((x:any)=>({...x, workout_days_target:+e.target.value}))} 
-                placeholder="Workout days per week"
-              />
+              <div className="flex items-center gap-2 mt-2">
+                <Input 
+                  id="workoutGoal"
+                  type="number"
+                  className="w-32"
+                  min="0"
+                  max="7"
+                  defaultValue={profile.workout_days_target || ""} 
+                  onChange={(e)=>setEdit((x:any)=>({...x, workout_days_target:+e.target.value}))} 
+                  placeholder="3"
+                />
+                <span className="text-muted-foreground">days per week</span>
+              </div>
             </div>
 
             {/* Profile Color */}
