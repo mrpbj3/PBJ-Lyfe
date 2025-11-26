@@ -119,8 +119,8 @@ export default function ContactPage() {
           <div className="space-y-2 text-sm">
             <p>
               <strong>Email:</strong>{' '}
-              <a href="mailto:support@pbjlyfe.com" className="text-primary hover:underline">
-                support@pbjlyfe.com
+              <a href="mailto:mr.pbj@pbjstudios.com" className="text-primary hover:underline">
+                mr.pbj@pbjstudios.com
               </a>
             </p>
             <p className="text-muted-foreground">
