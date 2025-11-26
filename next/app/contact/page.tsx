@@ -21,14 +21,20 @@ export default function ContactPage() {
 
   const mutation = useMutation({
     mutationFn: async (data: { subject: string; message: string; email?: string }) => {
-      const response = await apiRequest('POST', '/api/contact', data);
-      if (!response.ok) throw new Error('Failed to send message');
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to send message');
+      }
       return response.json();
     },
     onSuccess: () => {
       toast({ 
-        title: 'Message sent!',
-        description: 'We\'ll get back to you as soon as possible.',
+        title: 'Thank you! We will get back to you as soon as we can.',
         className: 'bg-green-500 text-white border-green-600'
       });
       setSubject('');
@@ -36,8 +42,7 @@ export default function ContactPage() {
     },
     onError: (error: Error) => {
       toast({ 
-        title: 'Error', 
-        description: 'Failed to send message. Please try again.',
+        title: 'Message failed. Please try again later!',
         variant: 'destructive',
         className: 'bg-red-500 text-white border-red-600'
       });

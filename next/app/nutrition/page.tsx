@@ -60,12 +60,15 @@ export default function NutritionPage() {
     
     setIsCalculating(true);
     try {
-      const response = await apiRequest('POST', '/api/calculate-calories', {
-        mealsDescription: mealsDescription
+      const response = await fetch('/api/calculate-calories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mealsDescription }),
       });
       
       if (!response.ok) {
-        throw new Error('Failed to calculate calories');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to calculate calories');
       }
       
       const data = await response.json();
@@ -74,11 +77,16 @@ export default function NutritionPage() {
       setFat(data.fat?.toString() || '');
       setCarbs(data.carbs?.toString() || '');
       
-      toast({ title: 'Calculation complete!', description: `Estimated ${data.calories} calories` });
-    } catch (error) {
+      toast({ 
+        title: 'Calculation complete!', 
+        description: `Estimated ${data.calories} calories`,
+        className: 'bg-green-500 text-white border-green-600'
+      });
+    } catch (error: any) {
+      console.error('AI calculation error:', error);
       toast({ 
         title: 'Calculation failed', 
-        description: 'Please enter values manually',
+        description: error.message || 'Please enter values manually',
         variant: 'destructive'
       });
     } finally {

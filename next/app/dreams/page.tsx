@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -18,14 +18,13 @@ import { getTodayISO } from '@/lib/dateUtils';
 export default function DreamsPage() {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(getTodayISO());
-  const [title, setTitle] = useState('');
-  const [narrative, setNarrative] = useState('');
-  const [dreamType, setDreamType] = useState<string>('good_dream');
+  const [dreamType, setDreamType] = useState<string>('none');
+  const [description, setDescription] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async (data: { date: string; title: string; narrative: string; dreamType: string }) => {
+    mutationFn: async (data: { date: string; dreamType: string; description: string }) => {
       await apiRequest('POST', '/api/dreams', data);
     },
     onSuccess: () => {
@@ -34,9 +33,8 @@ export default function DreamsPage() {
         className: 'bg-green-500 text-white border-green-600'
       });
       queryClient.invalidateQueries({ queryKey: ['/api/dreams'] });
-      setTitle('');
-      setNarrative('');
-      setDreamType('good_dream');
+      setDreamType('none');
+      setDescription('');
     },
     onError: (error: Error) => {
       toast({ 
@@ -50,11 +48,18 @@ export default function DreamsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !narrative) {
-      toast({ title: 'Error', description: 'Please fill in all fields', variant: 'destructive' });
-      return;
+    
+    // Auto-fill "No Memory" if dream/nightmare selected but description is blank
+    let finalDescription = description.trim();
+    if ((dreamType === 'dream' || dreamType === 'nightmare') && !finalDescription) {
+      finalDescription = 'No Memory';
     }
-    mutation.mutate({ date: selectedDate, title, narrative, dreamType });
+    
+    mutation.mutate({ 
+      date: selectedDate, 
+      dreamType, 
+      description: finalDescription 
+    });
   };
 
   if (!user) return null;
@@ -77,7 +82,7 @@ export default function DreamsPage() {
         {/* Date Picker */}
         <DashboardCard title="Select Date" className="mb-6">
           <div>
-            <Label htmlFor="date">Date</Label>
+            <Label htmlFor="date">Date of Dream</Label>
             <Input
               id="date"
               type="date"
@@ -89,45 +94,49 @@ export default function DreamsPage() {
         </DashboardCard>
 
         <DashboardCard title="Log Dream">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label>Dream Type</Label>
-              <Select value={dreamType} onValueChange={setDreamType}>
-                <SelectTrigger data-testid="select-dream-type">
-                  <SelectValue placeholder="Select dream type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="good_dream">Good Dream</SelectItem>
-                  <SelectItem value="neutral_dream">Neutral Dream</SelectItem>
-                  <SelectItem value="nightmare">Nightmare</SelectItem>
-                  <SelectItem value="lucid_dream">Lucid Dream</SelectItem>
-                  <SelectItem value="recurring_dream">Recurring Dream</SelectItem>
-                </SelectContent>
-              </Select>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Dream Type - Radio Buttons */}
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Did you have any dreams?</Label>
+              <RadioGroup
+                value={dreamType}
+                onValueChange={setDreamType}
+                className="space-y-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="none" id="none" />
+                  <Label htmlFor="none" className="cursor-pointer">None</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="dream" id="dream" />
+                  <Label htmlFor="dream" className="cursor-pointer">Dream</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="nightmare" id="nightmare" />
+                  <Label htmlFor="nightmare" className="cursor-pointer">Nightmare</Label>
+                </div>
+              </RadioGroup>
             </div>
-            <div>
-              <Label htmlFor="title">Title</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="What was your dream about?"
-                data-testid="input-dream-title"
-              />
-            </div>
-            <div>
-              <Label htmlFor="narrative">Description</Label>
-              <Textarea
-                id="narrative"
-                value={narrative}
-                onChange={(e) => setNarrative(e.target.value)}
-                placeholder="Describe what happened in your dream..."
-                rows={6}
-                data-testid="input-dream-narrative"
-              />
-            </div>
-            <Button type="submit" disabled={mutation.isPending} data-testid="button-log-dream">
+
+            {/* Description - Only shown for Dream or Nightmare */}
+            {(dreamType === 'dream' || dreamType === 'nightmare') && (
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe what happened in your dream..."
+                  rows={6}
+                  data-testid="input-dream-description"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Leave blank to auto-fill "No Memory"
+                </p>
+              </div>
+            )}
+
+            <Button type="submit" disabled={mutation.isPending} className="w-full" data-testid="button-log-dream">
               {mutation.isPending ? 'Logging...' : 'Log Dream'}
             </Button>
           </form>
