@@ -27,6 +27,7 @@ import {
   Coffee,
   Wind,
   Sparkles,
+  Dumbbell,
 } from "lucide-react";
 
 import { apiClient } from "@/lib/apiClient";
@@ -182,7 +183,7 @@ export default function Today() {
             How's Lyfe?
           </h3>
 
-          <div className="grid grid-cols-5 md:grid-cols-10 gap-3">
+          <div className="grid grid-cols-5 md:grid-cols-11 gap-3">
             <LifeButton icon={Moon} label="Sleep" href="/sleep" />
             <LifeButton icon={Scale} label="Weight" href="/weight" />
             <LifeButton icon={Utensils} label="Nutrition" href="/nutrition" />
@@ -193,6 +194,7 @@ export default function Today() {
             <LifeButton icon={Heart} label="Social" href="/social" />
             <LifeButton icon={Home} label="Hobbies" href="/hobbies" />
             <LifeButton icon={Coffee} label="Recovery" href="/recovery" />
+            <LifeButton icon={Dumbbell} label="Workouts" href="/workouts" />
           </div>
         </div>
 

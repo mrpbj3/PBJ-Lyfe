@@ -12,21 +12,62 @@ export interface SevenDayData {
   sleepTarget: number;
 }
 
+// Generate an array of the last 7 days (including today)
+function getLast7Days(): string[] {
+  const days: string[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    days.push(date.toISOString().split('T')[0]);
+  }
+  return days;
+}
+
 export function useSevenDay(userId: string | undefined) {
   return useQuery<SevenDayData[]>({
     queryKey: ["analytics-7d", userId],
     queryFn: async () => {
       const raw = await apiClient("/api/analytics/7d");
-
-      return raw.map((r: any) => ({
-        date: r.date,
-        sleepHours: r.sleep_hours !== null ? Number(r.sleep_hours) : null,
-        weightKg: r.weight_kg !== null ? Number(r.weight_kg) : null,
-        workoutMin: r.workout_min !== null ? Number(r.workout_min) : 0,
-        calories: Number(r.calories),
-        kcalTarget: Number(r.kcal_target),
-        sleepTarget: Number(r.sleep_target),
-      }));
+      
+      // Create a map of existing data by date
+      const dataByDate = new Map<string, any>();
+      if (Array.isArray(raw)) {
+        raw.forEach((r: any) => {
+          dataByDate.set(r.date, r);
+        });
+      }
+      
+      // Get default values (from first record or use defaults)
+      const defaultKcalTarget = raw?.[0]?.kcal_target || 2000;
+      const defaultSleepTarget = raw?.[0]?.sleep_target || 7;
+      
+      // Generate all 7 days, filling in missing days with null/0 values
+      const last7Days = getLast7Days();
+      
+      return last7Days.map((date) => {
+        const existing = dataByDate.get(date);
+        if (existing) {
+          return {
+            date: existing.date,
+            sleepHours: existing.sleep_hours !== null ? Number(existing.sleep_hours) : null,
+            weightKg: existing.weight_kg !== null ? Number(existing.weight_kg) : null,
+            workoutMin: existing.workout_min !== null ? Number(existing.workout_min) : 0,
+            calories: Number(existing.calories) || 0,
+            kcalTarget: Number(existing.kcal_target) || defaultKcalTarget,
+            sleepTarget: Number(existing.sleep_target) || defaultSleepTarget,
+          };
+        }
+        // Return empty data for days with no input
+        return {
+          date,
+          sleepHours: null,
+          weightKg: null,
+          workoutMin: 0,
+          calories: 0,
+          kcalTarget: defaultKcalTarget,
+          sleepTarget: defaultSleepTarget,
+        };
+      });
     },
     enabled: !!userId,
   });
