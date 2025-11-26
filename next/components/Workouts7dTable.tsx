@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import { useSevenDay } from '@/hooks/useSevenDay';
 import { formatDuration } from '@/lib/units';
 
@@ -35,15 +36,22 @@ export function Workouts7dTable({ userId }: Workouts7dTableProps) {
         </thead>
         <tbody>
           {workoutDays.map((day, idx) => (
-            <tr key={idx} className="border-t hover:bg-muted">
-              <td className="p-3">
-                {new Date(day.date).toLocaleDateString('en-US', {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                })}
+            <tr key={idx} className="border-t hover:bg-muted cursor-pointer transition-colors">
+              <td colSpan={2} className="p-0">
+                <Link 
+                  href={`/workouts/${day.date}`}
+                  className="flex justify-between p-3 w-full"
+                >
+                  <span>
+                    {new Date(day.date).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </span>
+                  <span>{formatDuration(day.workoutMin)}</span>
+                </Link>
               </td>
-              <td className="p-3 text-right">{formatDuration(day.workoutMin)}</td>
             </tr>
           ))}
         </tbody>
