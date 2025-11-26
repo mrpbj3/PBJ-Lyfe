@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus, Trash2, Dumbbell, Heart } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
@@ -18,33 +18,33 @@ import { getTodayISO } from '@/lib/dateUtils';
 
 interface StrengthExercise {
   name: string;
-  sets: string;
-  reps: string;
   weight: string;
+  reps: string;
 }
 
 interface CardioExercise {
   type: string;
   duration: string;
-  distance: string;
-  intensity: string;
 }
+
+interface WorkoutSession {
+  startTime: string;
+  endTime: string;
+  strengthExercises: StrengthExercise[];
+  cardioExercises: CardioExercise[];
+}
+
+const createEmptySession = (): WorkoutSession => ({
+  startTime: '',
+  endTime: '',
+  strengthExercises: [{ name: '', weight: '', reps: '' }],
+  cardioExercises: [{ type: '', duration: '' }],
+});
 
 export default function WorkoutsPage() {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(getTodayISO());
-  const [workoutType, setWorkoutType] = useState<'strength' | 'cardio' | 'both'>('strength');
-  
-  // Strength workout state
-  const [strengthExercises, setStrengthExercises] = useState<StrengthExercise[]>([
-    { name: '', sets: '', reps: '', weight: '' }
-  ]);
-  
-  // Cardio workout state
-  const [cardioExercises, setCardioExercises] = useState<CardioExercise[]>([
-    { type: '', duration: '', distance: '', intensity: 'moderate' }
-  ]);
-  
+  const [sessions, setSessions] = useState<WorkoutSession[]>([createEmptySession()]);
   const [notes, setNotes] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -58,9 +58,7 @@ export default function WorkoutsPage() {
   const mutation = useMutation({
     mutationFn: async (data: { 
       date: string; 
-      workoutType: string;
-      strengthExercises?: string[];
-      cardioExercises?: string[];
+      sessions: WorkoutSession[];
       notes?: string;
     }) => {
       await apiRequest('POST', '/api/workouts', data);
@@ -85,67 +83,87 @@ export default function WorkoutsPage() {
   });
 
   const resetForm = () => {
-    setStrengthExercises([{ name: '', sets: '', reps: '', weight: '' }]);
-    setCardioExercises([{ type: '', duration: '', distance: '', intensity: 'moderate' }]);
+    setSessions([createEmptySession()]);
     setNotes('');
   };
 
-  // Strength exercise handlers
-  const addStrengthExercise = () => {
-    setStrengthExercises([...strengthExercises, { name: '', sets: '', reps: '', weight: '' }]);
+  // Session handlers
+  const addSession = () => {
+    setSessions([...sessions, createEmptySession()]);
   };
 
-  const removeStrengthExercise = (index: number) => {
-    if (strengthExercises.length > 1) {
-      setStrengthExercises(strengthExercises.filter((_, i) => i !== index));
+  const removeSession = (sessionIdx: number) => {
+    if (sessions.length > 1) {
+      setSessions(sessions.filter((_, i) => i !== sessionIdx));
     }
   };
 
-  const updateStrengthExercise = (index: number, field: keyof StrengthExercise, value: string) => {
-    const newExercises = [...strengthExercises];
-    newExercises[index][field] = value;
-    setStrengthExercises(newExercises);
+  const updateSessionTime = (sessionIdx: number, field: 'startTime' | 'endTime', value: string) => {
+    const newSessions = [...sessions];
+    newSessions[sessionIdx][field] = value;
+    setSessions(newSessions);
+  };
+
+  // Strength exercise handlers
+  const addStrengthExercise = (sessionIdx: number) => {
+    const newSessions = [...sessions];
+    newSessions[sessionIdx].strengthExercises.push({ name: '', weight: '', reps: '' });
+    setSessions(newSessions);
+  };
+
+  const removeStrengthExercise = (sessionIdx: number, exerciseIdx: number) => {
+    const newSessions = [...sessions];
+    if (newSessions[sessionIdx].strengthExercises.length > 1) {
+      newSessions[sessionIdx].strengthExercises = newSessions[sessionIdx].strengthExercises.filter((_, i) => i !== exerciseIdx);
+      setSessions(newSessions);
+    }
+  };
+
+  const updateStrengthExercise = (sessionIdx: number, exerciseIdx: number, field: keyof StrengthExercise, value: string) => {
+    const newSessions = [...sessions];
+    newSessions[sessionIdx].strengthExercises[exerciseIdx][field] = value;
+    setSessions(newSessions);
   };
 
   // Cardio exercise handlers
-  const addCardioExercise = () => {
-    setCardioExercises([...cardioExercises, { type: '', duration: '', distance: '', intensity: 'moderate' }]);
+  const addCardioExercise = (sessionIdx: number) => {
+    const newSessions = [...sessions];
+    newSessions[sessionIdx].cardioExercises.push({ type: '', duration: '' });
+    setSessions(newSessions);
   };
 
-  const removeCardioExercise = (index: number) => {
-    if (cardioExercises.length > 1) {
-      setCardioExercises(cardioExercises.filter((_, i) => i !== index));
+  const removeCardioExercise = (sessionIdx: number, exerciseIdx: number) => {
+    const newSessions = [...sessions];
+    if (newSessions[sessionIdx].cardioExercises.length > 1) {
+      newSessions[sessionIdx].cardioExercises = newSessions[sessionIdx].cardioExercises.filter((_, i) => i !== exerciseIdx);
+      setSessions(newSessions);
     }
   };
 
-  const updateCardioExercise = (index: number, field: keyof CardioExercise, value: string) => {
-    const newExercises = [...cardioExercises];
-    newExercises[index][field] = value;
-    setCardioExercises(newExercises);
+  const updateCardioExercise = (sessionIdx: number, exerciseIdx: number, field: keyof CardioExercise, value: string) => {
+    const newSessions = [...sessions];
+    newSessions[sessionIdx].cardioExercises[exerciseIdx][field] = value;
+    setSessions(newSessions);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const strengthStrings = strengthExercises
-      .filter(ex => ex.name.trim())
-      .map(ex => `${ex.name}: ${ex.sets} sets x ${ex.reps} reps @ ${ex.weight}`);
-    
-    const cardioStrings = cardioExercises
-      .filter(ex => ex.type.trim())
-      .map(ex => `${ex.type}: ${ex.duration} min, ${ex.distance || 'N/A'}, ${ex.intensity} intensity`);
-    
-    if ((workoutType === 'strength' || workoutType === 'both') && strengthStrings.length === 0 && 
-        (workoutType === 'cardio' || workoutType === 'both') && cardioStrings.length === 0) {
+    // Validate that at least one session has some data
+    const hasValidData = sessions.some(session => {
+      const hasStrength = session.strengthExercises.some(ex => ex.name.trim());
+      const hasCardio = session.cardioExercises.some(ex => ex.type.trim() && ex.duration.trim());
+      return hasStrength || hasCardio;
+    });
+
+    if (!hasValidData) {
       toast({ title: 'Error', description: 'Please add at least one exercise', variant: 'destructive' });
       return;
     }
     
     mutation.mutate({ 
       date: selectedDate,
-      workoutType,
-      strengthExercises: strengthStrings.length > 0 ? strengthStrings : undefined,
-      cardioExercises: cardioStrings.length > 0 ? cardioStrings : undefined,
+      sessions,
       notes: notes || undefined
     });
   };
@@ -168,211 +186,196 @@ export default function WorkoutsPage() {
         <h1 className="text-3xl font-bold mb-8">Log Workout</h1>
         
         {/* Date Picker */}
-        <DashboardCard title="Select Date" className="mb-6">
+        <DashboardCard title="Date" className="mb-6">
           <div>
-            <Label htmlFor="date">Workout Date</Label>
             <Input
               id="date"
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
+              className="text-lg"
             />
           </div>
         </DashboardCard>
 
-        {/* Workout Type Selection */}
-        <DashboardCard title="Workout Type" className="mb-6">
-          <div className="grid grid-cols-3 gap-2">
-            <Button
-              type="button"
-              variant={workoutType === 'strength' ? 'default' : 'outline'}
-              onClick={() => setWorkoutType('strength')}
-              className="flex items-center gap-2"
-            >
-              <Dumbbell className="h-4 w-4" />
-              Strength
-            </Button>
-            <Button
-              type="button"
-              variant={workoutType === 'cardio' ? 'default' : 'outline'}
-              onClick={() => setWorkoutType('cardio')}
-              className="flex items-center gap-2"
-            >
-              <Heart className="h-4 w-4" />
-              Cardio
-            </Button>
-            <Button
-              type="button"
-              variant={workoutType === 'both' ? 'default' : 'outline'}
-              onClick={() => setWorkoutType('both')}
-            >
-              Both
-            </Button>
-          </div>
-        </DashboardCard>
-
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Strength Training Section */}
-          {(workoutType === 'strength' || workoutType === 'both') && (
-            <DashboardCard title="Strength Training" className="border-l-4 border-l-blue-500">
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Log your strength exercises (weight lifting, resistance training, etc.)
-                </p>
-                
-                {strengthExercises.map((exercise, idx) => (
-                  <div key={idx} className="p-3 border rounded-lg space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Exercise {idx + 1}</span>
-                      {strengthExercises.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeStrengthExercise(idx)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="col-span-2">
-                        <Input
-                          placeholder="Exercise name (e.g., Bench Press)"
-                          value={exercise.name}
-                          onChange={(e) => updateStrengthExercise(idx, 'name', e.target.value)}
-                        />
-                      </div>
-                      <Input
-                        placeholder="Sets"
-                        type="number"
-                        value={exercise.sets}
-                        onChange={(e) => updateStrengthExercise(idx, 'sets', e.target.value)}
-                      />
-                      <Input
-                        placeholder="Reps"
-                        type="number"
-                        value={exercise.reps}
-                        onChange={(e) => updateStrengthExercise(idx, 'reps', e.target.value)}
-                      />
-                      <div className="col-span-2">
-                        <Input
-                          placeholder="Weight (e.g., 135 lbs)"
-                          value={exercise.weight}
-                          onChange={(e) => updateStrengthExercise(idx, 'weight', e.target.value)}
-                        />
-                      </div>
-                    </div>
+          {sessions.map((session, sessionIdx) => (
+            <DashboardCard 
+              key={sessionIdx} 
+              title={`Session ${sessionIdx + 1}`}
+              className="border-l-4 border-l-primary"
+            >
+              <div className="space-y-6">
+                {/* Session Times */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="flex items-center gap-1 mb-2">
+                      <Clock className="h-4 w-4" />
+                      Start Time
+                    </Label>
+                    <Input
+                      type="time"
+                      value={session.startTime}
+                      onChange={(e) => updateSessionTime(sessionIdx, 'startTime', e.target.value)}
+                      placeholder="--:-- --"
+                    />
                   </div>
-                ))}
-                
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addStrengthExercise}
-                  className="w-full"
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Add Strength Exercise
-                </Button>
-              </div>
-            </DashboardCard>
-          )}
+                  <div>
+                    <Label className="flex items-center gap-1 mb-2">
+                      <Clock className="h-4 w-4" />
+                      End Time
+                    </Label>
+                    <Input
+                      type="time"
+                      value={session.endTime}
+                      onChange={(e) => updateSessionTime(sessionIdx, 'endTime', e.target.value)}
+                      placeholder="--:-- --"
+                    />
+                  </div>
+                </div>
 
-          {/* Cardio Section */}
-          {(workoutType === 'cardio' || workoutType === 'both') && (
-            <DashboardCard title="Cardio" className="border-l-4 border-l-red-500">
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Log your cardio activities (running, cycling, swimming, etc.)
-                </p>
-                
-                {cardioExercises.map((exercise, idx) => (
-                  <div key={idx} className="p-3 border rounded-lg space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Activity {idx + 1}</span>
-                      {cardioExercises.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeCardioExercise(idx)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="col-span-2">
-                        <Select
-                          value={exercise.type}
-                          onValueChange={(value) => updateCardioExercise(idx, 'type', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select activity" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="running">Running</SelectItem>
-                            <SelectItem value="walking">Walking</SelectItem>
-                            <SelectItem value="cycling">Cycling</SelectItem>
-                            <SelectItem value="swimming">Swimming</SelectItem>
-                            <SelectItem value="rowing">Rowing</SelectItem>
-                            <SelectItem value="elliptical">Elliptical</SelectItem>
-                            <SelectItem value="stairmaster">Stairmaster</SelectItem>
-                            <SelectItem value="hiit">HIIT</SelectItem>
-                            <SelectItem value="jump_rope">Jump Rope</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <Input
-                        placeholder="Duration (minutes)"
-                        type="number"
-                        value={exercise.duration}
-                        onChange={(e) => updateCardioExercise(idx, 'duration', e.target.value)}
-                      />
-                      <Input
-                        placeholder="Distance (optional)"
-                        value={exercise.distance}
-                        onChange={(e) => updateCardioExercise(idx, 'distance', e.target.value)}
-                      />
-                      <div className="col-span-2">
-                        <Select
-                          value={exercise.intensity}
-                          onValueChange={(value) => updateCardioExercise(idx, 'intensity', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Intensity" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="low">Low Intensity</SelectItem>
-                            <SelectItem value="moderate">Moderate Intensity</SelectItem>
-                            <SelectItem value="high">High Intensity</SelectItem>
-                            <SelectItem value="interval">Interval Training</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                {/* Workouts Section */}
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold mb-4">Workouts</h4>
+                  
+                  {/* Strength Training */}
+                  <div className="mb-6">
+                    <Label className="text-sm font-medium text-muted-foreground mb-2 block">Strength</Label>
+                    <div className="space-y-3">
+                      {session.strengthExercises.map((exercise, exerciseIdx) => (
+                        <div key={exerciseIdx} className="flex gap-2 items-start">
+                          <div className="flex-1 grid grid-cols-3 gap-2">
+                            <Input
+                              placeholder="Exercise"
+                              value={exercise.name}
+                              onChange={(e) => updateStrengthExercise(sessionIdx, exerciseIdx, 'name', e.target.value)}
+                            />
+                            <Input
+                              placeholder="Weight"
+                              value={exercise.weight}
+                              onChange={(e) => updateStrengthExercise(sessionIdx, exerciseIdx, 'weight', e.target.value)}
+                            />
+                            <Input
+                              placeholder="Reps"
+                              value={exercise.reps}
+                              onChange={(e) => updateStrengthExercise(sessionIdx, exerciseIdx, 'reps', e.target.value)}
+                            />
+                          </div>
+                          {session.strengthExercises.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeStrengthExercise(sessionIdx, exerciseIdx)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addStrengthExercise(sessionIdx)}
+                      >
+                        <Plus className="h-4 w-4 mr-1" /> Add Exercise
+                      </Button>
                     </div>
                   </div>
-                ))}
-                
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addCardioExercise}
-                  className="w-full"
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Add Cardio Activity
-                </Button>
+
+                  {/* Cardio */}
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground mb-2 block">Cardio</Label>
+                    <div className="space-y-3">
+                      {session.cardioExercises.map((exercise, exerciseIdx) => (
+                        <div key={exerciseIdx} className="flex gap-2 items-start">
+                          <div className="flex-1 grid grid-cols-2 gap-2">
+                            <Select
+                              value={exercise.type}
+                              onValueChange={(value) => updateCardioExercise(sessionIdx, exerciseIdx, 'type', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="running">Running</SelectItem>
+                                <SelectItem value="walking">Walking</SelectItem>
+                                <SelectItem value="cycling">Cycling</SelectItem>
+                                <SelectItem value="swimming">Swimming</SelectItem>
+                                <SelectItem value="rowing">Rowing</SelectItem>
+                                <SelectItem value="elliptical">Elliptical</SelectItem>
+                                <SelectItem value="stairmaster">Stairmaster</SelectItem>
+                                <SelectItem value="hiit">HIIT</SelectItem>
+                                <SelectItem value="jump_rope">Jump Rope</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Input
+                              placeholder="Duration (min)"
+                              type="number"
+                              value={exercise.duration}
+                              onChange={(e) => updateCardioExercise(sessionIdx, exerciseIdx, 'duration', e.target.value)}
+                            />
+                          </div>
+                          {session.cardioExercises.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeCardioExercise(sessionIdx, exerciseIdx)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addCardioExercise(sessionIdx)}
+                      >
+                        <Plus className="h-4 w-4 mr-1" /> Add Cardio
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Remove Session Button */}
+                {sessions.length > 1 && (
+                  <div className="border-t pt-4">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => removeSession(sessionIdx)}
+                      className="w-full"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" /> Remove Session
+                    </Button>
+                  </div>
+                )}
               </div>
             </DashboardCard>
-          )}
+          ))}
+
+          {/* Add Another Session */}
+          <DashboardCard title="Add another session?" className="border-dashed">
+            <div className="text-center">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addSession}
+              >
+                <Plus className="h-4 w-4 mr-1" /> Yes, Add Session
+              </Button>
+            </div>
+          </DashboardCard>
 
           {/* Notes */}
           <DashboardCard title="Notes">
             <div>
-              <Label htmlFor="notes">Workout Notes (optional)</Label>
               <Textarea
                 id="notes"
                 value={notes}
