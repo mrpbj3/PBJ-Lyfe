@@ -85,7 +85,8 @@ export default function ProfileDetailed() {
   // Get current weight from latest weigh-in
   const currentWeight = useMemo(() => {
     if (latestWeight && Array.isArray(latestWeight) && latestWeight.length > 0) {
-      return latestWeight[0]?.weightKg;
+      // The API returns weight_kg from body_metrics table
+      return latestWeight[0]?.weight_kg;
     }
     return null;
   }, [latestWeight]);
