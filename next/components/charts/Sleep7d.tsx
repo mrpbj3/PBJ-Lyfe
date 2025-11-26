@@ -23,11 +23,12 @@ export function Sleep7d({ userId }: Sleep7dProps) {
     return <div className="text-sm text-muted-foreground">Loading...</div>;
   }
 
+  // Always show 7 days even if no data
   if (!data || data.length === 0) {
     return <div className="text-sm text-muted-foreground">No sleep data available</div>;
   }
 
-  const sleepTarget = data[0]?.sleepTarget || 6;
+  const sleepTarget = data[0]?.sleepTarget || 7;
 
   const chartData = data.map((d: any) => ({
     date: new Date(d.date).toLocaleDateString('en-US', {
@@ -44,7 +45,7 @@ export function Sleep7d({ userId }: Sleep7dProps) {
       <BarChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="date" fontSize={12} />
-        <YAxis fontSize={12} />
+        <YAxis fontSize={12} domain={[0, 'auto']} />
 
         <Tooltip />
 

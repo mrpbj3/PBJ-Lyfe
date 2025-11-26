@@ -15,14 +15,9 @@ export function Workouts7dTable({ userId }: Workouts7dTableProps) {
     return <div className="text-sm text-muted-foreground">Loading...</div>;
   }
 
+  // Always show all 7 days
   if (!data || data.length === 0) {
     return <div className="text-sm text-muted-foreground">No workout data available</div>;
-  }
-
-  const workoutDays = data.filter(d => d.workoutMin > 0);
-
-  if (workoutDays.length === 0) {
-    return <div className="text-sm text-muted-foreground">No workouts logged in the last 7 days</div>;
   }
 
   return (
@@ -35,7 +30,7 @@ export function Workouts7dTable({ userId }: Workouts7dTableProps) {
           </tr>
         </thead>
         <tbody>
-          {workoutDays.map((day, idx) => (
+          {data.map((day, idx) => (
             <tr key={idx} className="border-t hover:bg-muted cursor-pointer transition-colors">
               <td colSpan={2} className="p-0">
                 <Link 
@@ -49,7 +44,9 @@ export function Workouts7dTable({ userId }: Workouts7dTableProps) {
                       day: 'numeric',
                     })}
                   </span>
-                  <span>{formatDuration(day.workoutMin)}</span>
+                  <span className={day.workoutMin > 0 ? '' : 'text-muted-foreground'}>
+                    {day.workoutMin > 0 ? formatDuration(day.workoutMin) : 'No workout'}
+                  </span>
                 </Link>
               </td>
             </tr>
