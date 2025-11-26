@@ -119,14 +119,24 @@ export default function ProfileDetailed() {
   const save = async () => {
     setIsSaving(true);
     try {
-      // Include recovery items in the update
-      const updateData = {
-        ...edit,
-        recovery_items: JSON.stringify(recoveryItems),
-      };
+      // Build complete update object including all edited fields
+      const updateData: any = { ...edit };
+      
+      // Always include recovery_items if in recovery mode
+      if (inRecovery || recoveryItems.length > 0) {
+        updateData.recovery_items = JSON.stringify(recoveryItems);
+      }
+      
+      // Ensure sensitive_data is properly serialized
+      if (updateData.sensitive_data) {
+        updateData.sensitive_data = JSON.stringify(updateData.sensitive_data);
+      }
+      
+      console.log('Saving profile data:', updateData);
       
       const { error } = await supabase.from("profiles").update(updateData).eq("id", user?.id);
       if (error) {
+        console.error('Save error:', error);
         toast({ 
           title: "Sorry, we could not save your changes. Please try again later.",
           variant: "destructive",
@@ -141,6 +151,7 @@ export default function ProfileDetailed() {
         className: "bg-green-500 text-white border-green-600"
       });
     } catch (err) {
+      console.error('Save exception:', err);
       toast({ 
         title: "Sorry, we could not save your changes. Please try again later.",
         variant: "destructive",
