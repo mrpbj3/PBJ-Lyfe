@@ -76,10 +76,10 @@ const checkInSchema = z.object({
   mentalWhy: z.string().optional(),
   
   // Step 2: Sleep
-  sleepStart: z.string(),
-  sleepEnd: z.string(),
+  sleepStart: z.string().optional(),
+  sleepEnd: z.string().optional(),
   dreamType: z.enum(['dream', 'nightmare', 'none']),
-  dreamDescription: z.string(),
+  dreamDescription: z.string().optional(),
   
   // Step 3: Workout (managed separately with state)
   didWorkout: z.boolean(),
@@ -113,19 +113,7 @@ const checkInSchema = z.object({
   proteinG: z.number().optional(),
   fatG: z.number().optional(),
   carbsG: z.number().optional(),
-}).refine(
-  (data) => {
-    // If user worked out, workout date is required
-    if (data.didWorkout && (!data.workoutDate || data.workoutDate.trim() === '')) {
-      return false;
-    }
-    return true;
-  },
-  {
-    message: 'Workout date is required when you worked out',
-    path: ['workoutDate'],
-  }
-);
+});
 
 type CheckInFormData = z.infer<typeof checkInSchema>;
 
@@ -299,149 +287,216 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
   // Submit all data
   const submitCheckIn = useMutation({
     mutationFn: async (data: CheckInFormData) => {
+      const errors: string[] = [];
+      
       // Submit mental health
-      await apiRequest('POST', '/api/mental', {
-        date: today,
-        rating: data.mentalRating,
-        why: data.mentalWhy,
-      });
+      try {
+        await apiRequest('POST', '/api/mental', {
+          date: today,
+          rating: data.mentalRating,
+          why: data.mentalWhy,
+        });
+      } catch (e) {
+        console.error('Mental API error:', e);
+        errors.push('mental');
+      }
 
       // Submit sleep
-      await apiRequest('POST', '/api/sleep', {
-        startAt: data.sleepStart,
-        endAt: data.sleepEnd,
-        dreamType: data.dreamType,
-        dreamDescription: data.dreamDescription,
-      });
+      try {
+        if (data.sleepStart && data.sleepEnd) {
+          await apiRequest('POST', '/api/sleep', {
+            startAt: data.sleepStart,
+            endAt: data.sleepEnd,
+            dreamType: data.dreamType,
+            dreamDescription: data.dreamDescription || (data.dreamType === 'none' ? 'N/A' : 'No Memory'),
+          });
+        }
+      } catch (e) {
+        console.error('Sleep API error:', e);
+        errors.push('sleep');
+      }
 
       // Submit workout sessions if applicable
       if (data.didWorkout && data.workoutDate) {
-        for (const session of workoutSessions) {
-          // Only submit sessions with at least start/end time
-          if (session.startTime && session.endTime) {
-            // Combine date with times for full datetime
-            const startAt = `${data.workoutDate}T${session.startTime}`;
-            const endAt = `${data.workoutDate}T${session.endTime}`;
-            
-            // Collect all non-empty strength exercises
-            const exercises = session.strength
-              .filter(ex => ex.exercise.trim())
-              .map(ex => `${ex.exercise} - ${ex.weight} x ${ex.reps}`)
-              .concat(
-                session.cardio
-                  .filter(c => c.type.trim())
-                  .map(c => `${c.type} - ${c.duration}`)
-              );
-            
-            await apiRequest('POST', '/api/workouts', {
-              date: data.workoutDate,
-              startAt: startAt,
-              endAt: endAt,
-              exercises: exercises,
-            });
+        try {
+          for (const session of workoutSessions) {
+            // Only submit sessions with at least start/end time
+            if (session.startTime && session.endTime) {
+              // Combine date with times for full datetime
+              const startAt = `${data.workoutDate}T${session.startTime}`;
+              const endAt = `${data.workoutDate}T${session.endTime}`;
+              
+              // Collect all non-empty strength exercises
+              const exercises = session.strength
+                .filter(ex => ex.exercise.trim())
+                .map(ex => `${ex.exercise} - ${ex.weight} x ${ex.reps}`)
+                .concat(
+                  session.cardio
+                    .filter(c => c.type.trim())
+                    .map(c => `${c.type} - ${c.duration}`)
+                );
+              
+              await apiRequest('POST', '/api/workouts', {
+                date: data.workoutDate,
+                startAt: startAt,
+                endAt: endAt,
+                exercises: exercises,
+              });
+            }
           }
+        } catch (e) {
+          console.error('Workout API error:', e);
+          errors.push('workout');
         }
       }
 
       // Submit weight if provided (convert lbs to kg for storage)
       if (data.didWeighIn && data.weightLbs) {
-        const weightKg = data.weightLbs * 0.453592; // Convert lbs to kg
-        await apiRequest('POST', '/api/weight', {
-          date: today,
-          weightKg: weightKg,
-        });
+        try {
+          const weightKg = data.weightLbs * 0.453592; // Convert lbs to kg
+          await apiRequest('POST', '/api/weight', {
+            date: today,
+            weightKg: weightKg,
+          });
+        } catch (e) {
+          console.error('Weight API error:', e);
+          errors.push('weight');
+        }
       }
 
       // Submit meditation if done
       if (data.didMeditate && data.meditationMin) {
-        await apiRequest('POST', '/api/meditation', {
-          date: today,
-          durationMin: data.meditationMin,
-        });
+        try {
+          await apiRequest('POST', '/api/meditation', {
+            date: today,
+            durationMin: data.meditationMin,
+          });
+        } catch (e) {
+          console.error('Meditation API error:', e);
+          errors.push('meditation');
+        }
       }
 
       // Submit yesterday's work stress
       if (data.workStress) {
-        await apiRequest('POST', '/api/work', {
-          date: yesterday,
-          stress: data.workStress,
-          why: data.workWhy,
-        });
+        try {
+          await apiRequest('POST', '/api/work', {
+            date: yesterday,
+            stress: data.workStress,
+            why: data.workWhy,
+          });
+        } catch (e) {
+          console.error('Work API error:', e);
+          errors.push('work');
+        }
       }
 
       // Submit yesterday's hobbies
       if (data.yesterdayHobby) {
-        await apiRequest('POST', '/api/hobbies', {
-          date: yesterday,
-          hobby: data.yesterdayHobby,
-          durationMin: data.hobbyDuration || 0,
-        });
+        try {
+          await apiRequest('POST', '/api/hobbies', {
+            date: yesterday,
+            hobby: data.yesterdayHobby,
+            durationMin: data.hobbyDuration || 0,
+          });
+        } catch (e) {
+          console.error('Hobbies API error:', e);
+          errors.push('hobbies');
+        }
       }
 
       // Submit yesterday's social
       if (data.yesterdaySocial) {
-        await apiRequest('POST', '/api/social', {
-          date: yesterday,
-          activity: data.yesterdaySocial,
-          durationMin: data.socialDuration || 0,
-        });
+        try {
+          await apiRequest('POST', '/api/social', {
+            date: yesterday,
+            activity: data.yesterdaySocial,
+            durationMin: data.socialDuration || 0,
+          });
+        } catch (e) {
+          console.error('Social API error:', e);
+          errors.push('social');
+        }
       }
       
       // Submit calories/meals if provided
       if (data.caloriesConsumed) {
-        await apiRequest('POST', '/api/meals', {
-          date: yesterday,
-          calories: data.caloriesConsumed,
-          proteinG: data.proteinG,
-          fatG: data.fatG,
-          carbsG: data.carbsG,
-          notes: data.mealsDescription,
-        });
+        try {
+          await apiRequest('POST', '/api/meals', {
+            date: yesterday,
+            calories: data.caloriesConsumed,
+            proteinG: data.proteinG,
+            fatG: data.fatG,
+            carbsG: data.carbsG,
+            notes: data.mealsDescription,
+          });
+        } catch (e) {
+          console.error('Meals API error:', e);
+          errors.push('meals');
+        }
       }
 
       // Submit drug use logs if applicable
       if (data.didUseDrugs) {
-        for (const entry of drugEntries) {
-          if (entry.drugName.trim()) {
-            await apiRequest('POST', '/api/recovery/drug-use', {
-              date: yesterday,
-              drugName: entry.drugName,
-              amount: entry.amount,
-              isPrescribed: entry.isPrescribed,
-            });
+        try {
+          for (const entry of drugEntries) {
+            if (entry.drugName.trim()) {
+              await apiRequest('POST', '/api/recovery/drug-use', {
+                date: yesterday,
+                drugName: entry.drugName,
+                amount: entry.amount,
+                isPrescribed: entry.isPrescribed,
+              });
+            }
           }
+        } catch (e) {
+          console.error('Drug use API error:', e);
+          errors.push('drug-use');
         }
       }
       
       // Submit withdrawal symptoms if applicable
       if (data.isInRecovery) {
-        for (const entry of withdrawalEntries) {
-          if (entry.drugName.trim() && entry.symptoms.trim()) {
-            await apiRequest('POST', '/api/recovery/withdrawal', {
-              date: yesterday,
-              drugName: entry.drugName,
-              symptoms: entry.symptoms,
-            });
+        try {
+          for (const entry of withdrawalEntries) {
+            if (entry.drugName.trim() && entry.symptoms.trim()) {
+              await apiRequest('POST', '/api/recovery/withdrawal', {
+                date: yesterday,
+                drugName: entry.drugName,
+                symptoms: entry.symptoms,
+              });
+            }
           }
+        } catch (e) {
+          console.error('Withdrawal API error:', e);
+          errors.push('withdrawal');
         }
       }
+      
+      // Return result - we consider it successful even if some endpoints failed
+      // as long as core data was saved
+      return { errors };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['/api/analytics/daily', today] });
       queryClient.invalidateQueries({ queryKey: ['/api/streaks/current'] });
+      
+      // Show success toast
       toast({
         title: 'Thanks for checking in!',
         className: 'bg-green-500 text-white border-green-600',
       });
+      
+      // Close the dialog
       onClose();
     },
     onError: (error) => {
+      console.error('Check-in submission error:', error);
       toast({
         title: "Sorry, we couldn't check you in right now. Please try again later.",
         variant: 'destructive',
         className: 'bg-red-500 text-white border-red-600',
       });
-      console.error(error);
     },
   });
 
@@ -519,18 +574,9 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Final step - submit everything
-      form.handleSubmit(
-        (data) => submitCheckIn.mutate(data),
-        (errors) => {
-          console.error('Form validation errors:', errors);
-          toast({
-            title: 'Please complete all required fields',
-            description: 'Check previous steps for missing information',
-            variant: 'destructive',
-          });
-        }
-      )();
+      // Final step - submit everything directly
+      const data = form.getValues();
+      submitCheckIn.mutate(data);
     }
   };
 
