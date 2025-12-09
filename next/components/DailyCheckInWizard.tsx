@@ -293,6 +293,43 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
     mutationFn: async (data: CheckInFormData) => {
       const errors: string[] = [];
       
+      // Create daily check-in record with answers
+      try {
+        const answers = [
+          { question_key: 'mental_rating', answer_value: data.mentalRating || '' },
+          { question_key: 'mental_why', answer_value: data.mentalWhy || '' },
+          { question_key: 'sleep_start', answer_value: data.sleepStart || '' },
+          { question_key: 'sleep_end', answer_value: data.sleepEnd || '' },
+          { question_key: 'dream_type', answer_value: data.dreamType || '' },
+          { question_key: 'dream_description', answer_value: data.dreamDescription || '' },
+          { question_key: 'did_workout', answer_value: String(data.didWorkout || false) },
+          { question_key: 'workout_date', answer_value: data.workoutDate || '' },
+          { question_key: 'did_weigh_in', answer_value: String(data.didWeighIn || false) },
+          { question_key: 'weight_lbs', answer_value: String(data.weightLbs || '') },
+          { question_key: 'did_meditate', answer_value: String(data.didMeditate || false) },
+          { question_key: 'meditation_min', answer_value: String(data.meditationMin || '') },
+          { question_key: 'work_stress', answer_value: data.workStress || '' },
+          { question_key: 'work_notes', answer_value: data.workNotes || '' },
+          { question_key: 'social_activity', answer_value: data.socialActivity || '' },
+          { question_key: 'social_duration', answer_value: String(data.socialDuration || '') },
+          { question_key: 'hobby_activity', answer_value: data.hobbyActivity || '' },
+          { question_key: 'hobby_duration', answer_value: String(data.hobbyDuration || '') },
+          { question_key: 'calories_consumed', answer_value: String(data.caloriesConsumed || '') },
+          { question_key: 'protein_g', answer_value: String(data.proteinG || '') },
+          { question_key: 'fat_g', answer_value: String(data.fatG || '') },
+          { question_key: 'carbs_g', answer_value: String(data.carbsG || '') },
+          { question_key: 'meals_description', answer_value: data.mealsDescription || '' },
+        ];
+        
+        await apiRequest('POST', '/api/checkins', {
+          date: today,
+          answers: answers,
+        });
+      } catch (e) {
+        console.error('Daily check-in record error:', e);
+        errors.push('checkin-record');
+      }
+      
       // Submit mental health
       try {
         await apiRequest('POST', '/api/mental', {
