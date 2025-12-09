@@ -481,20 +481,40 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
       return { errors };
     },
     onSuccess: async (result) => {
+      console.log('Check-in successful, invalidating queries for userId:', userId);
+      
       // Invalidate and refetch all relevant queries to refresh data across the app
+      // Use exact query keys or partial matching with queryKey predicate
       await Promise.all([
+        // Invalidate with exact keys
         queryClient.invalidateQueries({ queryKey: ['/api/analytics/daily'] }),
         queryClient.invalidateQueries({ queryKey: ['/api/streaks/current'] }),
         queryClient.invalidateQueries({ queryKey: ['analytics-daily'] }),
-        queryClient.invalidateQueries({ queryKey: ['analytics-7d'] }),
         queryClient.invalidateQueries({ queryKey: ['streak-current'] }),
-        queryClient.invalidateQueries({ queryKey: ['weight'] }),
-        queryClient.invalidateQueries({ queryKey: ['profile'] }),
+        // Invalidate all analytics-7d queries (including with userId)
+        queryClient.invalidateQueries({ 
+          predicate: (query) => query.queryKey[0] === 'analytics-7d'
+        }),
+        // Invalidate all weight queries (including with "latest" and userId)
+        queryClient.invalidateQueries({ 
+          predicate: (query) => query.queryKey[0] === 'weight'
+        }),
+        // Invalidate all profile queries
+        queryClient.invalidateQueries({ 
+          predicate: (query) => query.queryKey[0] === 'profile'
+        }),
       ]);
       
-      // Force refetch analytics and weight data
-      await queryClient.refetchQueries({ queryKey: ['analytics-7d'] });
-      await queryClient.refetchQueries({ queryKey: ['weight'] });
+      // Force refetch specific queries to get fresh data immediately
+      await Promise.all([
+        queryClient.refetchQueries({ 
+          predicate: (query) => query.queryKey[0] === 'analytics-7d'
+        }),
+        queryClient.refetchQueries({ 
+          predicate: (query) => query.queryKey[0] === 'weight'
+        }),
+        queryClient.refetchQueries({ queryKey: ['analytics-daily'] }),
+      ]);
       
       console.log('Query cache invalidated and refetched after check-in');
       
