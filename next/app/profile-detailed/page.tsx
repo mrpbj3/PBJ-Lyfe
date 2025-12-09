@@ -39,10 +39,12 @@ export default function ProfileDetailed() {
   });
 
   // Fetch latest weight from body_metrics
-  const { data: latestWeight } = useQuery({
+  const { data: latestWeight, refetch: refetchWeight } = useQuery({
     queryKey: ["weight", "latest", user?.id],
     queryFn: () => apiClient('/api/weight'),
     enabled: !!user,
+    staleTime: 0, // Always refetch to get latest weight
+    refetchOnMount: true,
   });
 
   const [edit, setEdit] = useState<any>({});
@@ -84,9 +86,12 @@ export default function ProfileDetailed() {
 
   // Get current weight from latest weigh-in
   const currentWeight = useMemo(() => {
+    console.log('Latest weight data:', latestWeight);
     if (latestWeight && Array.isArray(latestWeight) && latestWeight.length > 0) {
       // The API returns weight_kg from body_metrics table
-      return latestWeight[0]?.weight_kg;
+      const weightKg = latestWeight[0]?.weight_kg;
+      console.log('Extracted weight_kg:', weightKg);
+      return weightKg ? Number(weightKg) : null;
     }
     return null;
   }, [latestWeight]);
