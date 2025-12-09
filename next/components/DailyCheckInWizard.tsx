@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -148,6 +148,7 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
   const [hasCalculated, setHasCalculated] = useState(false);
   
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const today = getTodayISO();
   const yesterday = getYesterdayISO();
 
