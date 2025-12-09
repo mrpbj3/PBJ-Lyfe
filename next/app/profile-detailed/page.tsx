@@ -128,19 +128,27 @@ export default function ProfileDetailed() {
       // Build complete update object including all edited fields
       const updateData: any = { ...edit };
       
-      // Always include recovery_items if in recovery mode
-      if (inRecovery || recoveryItems.length > 0) {
-        updateData.recovery_items = JSON.stringify(recoveryItems);
+      // Always include recovery_items if they've been modified or in recovery mode
+      if (inRecovery && recoveryItems.length > 0) {
+        updateData.recovery_items = recoveryItems; // Store as JSONB, not stringified
+      } else if (!inRecovery) {
+        updateData.recovery_items = []; // Clear recovery items if not in recovery
       }
       
-      // Ensure sensitive_data is properly serialized
-      if (updateData.sensitive_data) {
-        updateData.sensitive_data = JSON.stringify(updateData.sensitive_data);
+      // Handle sensitive_data - if it's been modified, save it as JSONB
+      if (updateData.sensitive_data && typeof updateData.sensitive_data === 'object') {
+        // Keep as object, Supabase handles JSONB serialization
+        // Don't stringify it
       }
       
       console.log('Saving profile data:', updateData);
       
-      const { error } = await supabase.from("profiles").update(updateData).eq("id", user?.id);
+      const { data: updateResult, error } = await supabase
+        .from("profiles")
+        .update(updateData)
+        .eq("id", user?.id)
+        .select();
+        
       if (error) {
         console.error('Save error:', error);
         toast({ 
@@ -150,8 +158,13 @@ export default function ProfileDetailed() {
         });
         return;
       }
+      
+      console.log('Save successful:', updateResult);
+      
       await refetch();
       setEdit({});
+      setRecoveryInitialized(false); // Reset to allow re-initialization on next load
+      
       toast({ 
         title: "Changes Saved!",
         className: "bg-green-500 text-white border-green-600"

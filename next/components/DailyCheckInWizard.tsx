@@ -478,8 +478,14 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
       return { errors };
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/analytics/daily', today] });
+      // Invalidate all relevant queries to refresh data across the app
+      queryClient.invalidateQueries({ queryKey: ['/api/analytics/daily'] });
       queryClient.invalidateQueries({ queryKey: ['/api/streaks/current'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics-daily'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics-7d'] });
+      queryClient.invalidateQueries({ queryKey: ['streak-current'] });
+      queryClient.invalidateQueries({ queryKey: ['weight'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
       
       // Show success toast
       toast({
