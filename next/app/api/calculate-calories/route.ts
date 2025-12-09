@@ -42,26 +42,43 @@ Use your best nutritional knowledge to estimate reasonable values. All values sh
 
     const content = completion.choices[0]?.message?.content || '{}';
     
+    console.log('OpenAI raw response:', content);
+    
     // Try to parse the JSON response
     let parsed;
     try {
       // Remove any markdown formatting if present
       const cleanedContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       parsed = JSON.parse(cleanedContent);
+      
+      console.log('Parsed nutrition data:', parsed);
     } catch (parseError) {
       console.error('Failed to parse AI response:', content);
       return NextResponse.json(
-        { message: 'Failed to parse AI response' },
+        { message: 'Failed to parse AI response. Raw content: ' + content },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({
-      calories: Math.round(parsed.calories || 0),
-      protein: Math.round(parsed.protein || 0),
-      fat: Math.round(parsed.fat || 0),
-      carbs: Math.round(parsed.carbs || 0),
-    });
+    // Validate parsed data has required fields
+    if (parsed.calories == null || parsed.protein == null || parsed.fat == null || parsed.carbs == null) {
+      console.error('Missing required nutrition fields:', parsed);
+      return NextResponse.json(
+        { message: 'AI response missing required nutrition fields', data: parsed },
+        { status: 500 }
+      );
+    }
+
+    const result = {
+      calories: Math.round(Number(parsed.calories) || 0),
+      protein: Math.round(Number(parsed.protein) || 0),
+      fat: Math.round(Number(parsed.fat) || 0),
+      carbs: Math.round(Number(parsed.carbs) || 0),
+    };
+    
+    console.log('Returning nutrition data:', result);
+    
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error calculating nutrition with AI:', error);
     return NextResponse.json(

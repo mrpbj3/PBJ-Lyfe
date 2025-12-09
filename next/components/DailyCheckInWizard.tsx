@@ -230,10 +230,13 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
       
       const data = await response.json();
       
-      // Validate that all values are valid numbers
-      if (!data.calories || !data.protein || !data.fat || !data.carbs ||
+      console.log('AI calorie calculation response:', data);
+      
+      // Validate that all values exist and are valid numbers (allow 0 values)
+      if (data.calories == null || data.protein == null || data.fat == null || data.carbs == null ||
           isNaN(data.calories) || isNaN(data.protein) || isNaN(data.fat) || isNaN(data.carbs)) {
-        throw new Error('Invalid response from AI - missing or invalid nutritional data');
+        console.error('Invalid nutrition data:', data);
+        throw new Error('Invalid response from AI — missing or invalid nutritional data. Please enter manually.');
       }
       
       form.setValue('caloriesConsumed', Math.round(data.calories));
@@ -477,15 +480,23 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
       // as long as core data was saved
       return { errors };
     },
-    onSuccess: (result) => {
-      // Invalidate all relevant queries to refresh data across the app
-      queryClient.invalidateQueries({ queryKey: ['/api/analytics/daily'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/streaks/current'] });
-      queryClient.invalidateQueries({ queryKey: ['analytics-daily'] });
-      queryClient.invalidateQueries({ queryKey: ['analytics-7d'] });
-      queryClient.invalidateQueries({ queryKey: ['streak-current'] });
-      queryClient.invalidateQueries({ queryKey: ['weight'] });
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    onSuccess: async (result) => {
+      // Invalidate and refetch all relevant queries to refresh data across the app
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['/api/analytics/daily'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/streaks/current'] }),
+        queryClient.invalidateQueries({ queryKey: ['analytics-daily'] }),
+        queryClient.invalidateQueries({ queryKey: ['analytics-7d'] }),
+        queryClient.invalidateQueries({ queryKey: ['streak-current'] }),
+        queryClient.invalidateQueries({ queryKey: ['weight'] }),
+        queryClient.invalidateQueries({ queryKey: ['profile'] }),
+      ]);
+      
+      // Force refetch analytics and weight data
+      await queryClient.refetchQueries({ queryKey: ['analytics-7d'] });
+      await queryClient.refetchQueries({ queryKey: ['weight'] });
+      
+      console.log('Query cache invalidated and refetched after check-in');
       
       // Show success toast
       toast({

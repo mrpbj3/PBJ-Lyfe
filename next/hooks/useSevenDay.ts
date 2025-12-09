@@ -26,6 +26,9 @@ function getLast7Days(): string[] {
 export function useSevenDay(userId: string | undefined) {
   return useQuery<SevenDayData[]>({
     queryKey: ["analytics-7d", userId],
+    staleTime: 0, // Always consider data stale
+    refetchOnMount: true, // Refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window gets focus
     queryFn: async () => {
       const raw = await apiClient("/api/analytics/7d");
       
