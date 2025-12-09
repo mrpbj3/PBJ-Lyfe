@@ -321,10 +321,11 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
           { question_key: 'meals_description', answer_value: data.mealsDescription || '' },
         ];
         
-        await apiRequest('POST', '/api/checkins', {
+        const checkinsResult = await apiRequest('POST', '/api/checkins', {
           date: today,
           answers: answers,
         });
+        console.log('Daily check-in record saved successfully:', checkinsResult);
       } catch (e) {
         console.error('Daily check-in record error:', e);
         errors.push('checkin-record');
@@ -332,11 +333,12 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
       
       // Submit mental health
       try {
-        await apiRequest('POST', '/api/mental', {
+        const mentalResult = await apiRequest('POST', '/api/mental', {
           date: today,
           rating: data.mentalRating,
           why: data.mentalWhy,
         });
+        console.log('Mental health saved successfully:', mentalResult);
       } catch (e) {
         console.error('Mental API error:', e);
         errors.push('mental');
@@ -395,10 +397,11 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
       if (data.didWeighIn && data.weightLbs) {
         try {
           const weightKg = data.weightLbs * 0.453592; // Convert lbs to kg
-          await apiRequest('POST', '/api/weight', {
+          const weightResult = await apiRequest('POST', '/api/weight', {
             date: today,
             weightKg: weightKg,
           });
+          console.log('Weight saved successfully:', weightResult, 'weightKg:', weightKg, 'date:', today);
         } catch (e) {
           console.error('Weight API error:', e);
           errors.push('weight');
@@ -520,6 +523,10 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
     },
     onSuccess: async (result) => {
       console.log('Check-in successful, invalidating queries for userId:', userId);
+      console.log('Check-in result:', result);
+      
+      // Add a small delay to allow Supabase to process all inserts
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Invalidate and refetch all relevant queries to refresh data across the app
       // Use exact query keys or partial matching with queryKey predicate
@@ -529,6 +536,7 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
         queryClient.invalidateQueries({ queryKey: ['/api/streaks/current'] }),
         queryClient.invalidateQueries({ queryKey: ['analytics-daily'] }),
         queryClient.invalidateQueries({ queryKey: ['streak-current'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/analytics/7d'] }),
         // Invalidate all analytics-7d queries (including with userId)
         queryClient.invalidateQueries({ 
           predicate: (query) => query.queryKey[0] === 'analytics-7d'
@@ -541,6 +549,10 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
         queryClient.invalidateQueries({ 
           predicate: (query) => query.queryKey[0] === 'profile'
         }),
+        // Invalidate checkins queries
+        queryClient.invalidateQueries({ 
+          predicate: (query) => query.queryKey[0] === 'checkins'
+        }),
       ]);
       
       // Force refetch specific queries to get fresh data immediately
@@ -552,6 +564,7 @@ export function DailyCheckInWizard({ isOpen, onClose, userId, userFirstName }: D
           predicate: (query) => query.queryKey[0] === 'weight'
         }),
         queryClient.refetchQueries({ queryKey: ['analytics-daily'] }),
+        queryClient.refetchQueries({ queryKey: ['/api/analytics/7d'] }),
       ]);
       
       console.log('Query cache invalidated and refetched after check-in');
