@@ -1,11 +1,11 @@
 "use client";
 
 import "./globals.css";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { AuthProvider } from "@/auth/AuthProvider";
 import { ProfileProvider } from "@/hooks/useProfile";
-
-const queryClient = new QueryClient();
+import { Toaster } from "@/components/ui/toaster";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -15,6 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthProvider>
             <ProfileProvider>
               {children}
+              <Toaster />
             </ProfileProvider>
           </AuthProvider>
         </QueryClientProvider>

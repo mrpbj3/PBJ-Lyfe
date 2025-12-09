@@ -41,6 +41,7 @@ export function Weight7d({ userId }: Weight7dProps) {
     return <div className="text-sm text-muted-foreground">Loading...</div>;
   }
 
+  // Always show all 7 days
   if (!data || data.length === 0) {
     return <div className="text-sm text-muted-foreground">No weight data available</div>;
   }
@@ -48,18 +49,20 @@ export function Weight7d({ userId }: Weight7dProps) {
   const useImperial = profile?.units_weight === "lb" || profile?.units_weight === "lbs";
   const unit = useImperial ? "lbs" : "kg";
 
-  const chartData = data
-    .filter((d: any) => d.weightKg !== null && d.weightKg !== undefined)
-    .map((d: any) => ({
-      date: new Date(d.date).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
-      weight: useImperial ? kgToLb(d.weightKg) : d.weightKg,
-    }));
+  // Map all 7 days, showing null for days without weight data
+  const chartData = data.map((d: any) => ({
+    date: new Date(d.date).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    }),
+    weight: d.weightKg !== null ? (useImperial ? kgToLb(d.weightKg) : d.weightKg) : null,
+  }));
 
-  if (chartData.length === 0) {
-    return <div className="text-sm text-muted-foreground">No weight data available</div>;
+  // Check if there's any weight data at all
+  const hasWeightData = chartData.some(d => d.weight !== null);
+  
+  if (!hasWeightData) {
+    return <div className="text-sm text-muted-foreground">No weight data available - log your weight to see trends</div>;
   }
 
   return (
@@ -69,6 +72,7 @@ export function Weight7d({ userId }: Weight7dProps) {
         <XAxis dataKey="date" fontSize={12} />
         <YAxis
           fontSize={12}
+          domain={['auto', 'auto']}
           label={{
             value: `Weight (${unit})`,
             angle: -90,
@@ -76,7 +80,7 @@ export function Weight7d({ userId }: Weight7dProps) {
           }}
         />
 
-        <Tooltip formatter={(value: any) => [`${Number(value).toFixed(1)} ${unit}`, "Weight"]} />
+        <Tooltip formatter={(value: any) => value !== null ? [`${Number(value).toFixed(1)} ${unit}`, "Weight"] : ["No data", "Weight"]} />
 
         <Line
           type="monotone"
@@ -84,6 +88,7 @@ export function Weight7d({ userId }: Weight7dProps) {
           stroke="#3B82F6"
           strokeWidth={2}
           dot={{ fill: "#3B82F6", r: 4 }}
+          connectNulls={true}
         />
       </LineChart>
     </ResponsiveContainer>

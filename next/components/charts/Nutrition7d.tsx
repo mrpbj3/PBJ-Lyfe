@@ -23,6 +23,7 @@ export function Nutrition7d({ userId }: Nutrition7dProps) {
     return <div className="text-sm text-muted-foreground">Loading...</div>;
   }
 
+  // Always show all 7 days
   if (!data || data.length === 0) {
     return <div className="text-sm text-muted-foreground">No nutrition data available</div>;
   }
@@ -44,7 +45,7 @@ export function Nutrition7d({ userId }: Nutrition7dProps) {
       <BarChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="date" fontSize={12} />
-        <YAxis fontSize={12} />
+        <YAxis fontSize={12} domain={[0, 'auto']} />
         <Tooltip />
 
         <ReferenceLine

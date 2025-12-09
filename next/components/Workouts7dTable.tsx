@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import { useSevenDay } from '@/hooks/useSevenDay';
 import { formatDuration } from '@/lib/units';
 
@@ -14,14 +15,9 @@ export function Workouts7dTable({ userId }: Workouts7dTableProps) {
     return <div className="text-sm text-muted-foreground">Loading...</div>;
   }
 
+  // Always show all 7 days
   if (!data || data.length === 0) {
     return <div className="text-sm text-muted-foreground">No workout data available</div>;
-  }
-
-  const workoutDays = data.filter(d => d.workoutMin > 0);
-
-  if (workoutDays.length === 0) {
-    return <div className="text-sm text-muted-foreground">No workouts logged in the last 7 days</div>;
   }
 
   return (
@@ -34,16 +30,25 @@ export function Workouts7dTable({ userId }: Workouts7dTableProps) {
           </tr>
         </thead>
         <tbody>
-          {workoutDays.map((day, idx) => (
-            <tr key={idx} className="border-t hover:bg-muted">
-              <td className="p-3">
-                {new Date(day.date).toLocaleDateString('en-US', {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                })}
+          {data.map((day, idx) => (
+            <tr key={idx} className="border-t hover:bg-muted cursor-pointer transition-colors">
+              <td colSpan={2} className="p-0">
+                <Link 
+                  href={`/workouts/${day.date}`}
+                  className="flex justify-between p-3 w-full"
+                >
+                  <span>
+                    {new Date(day.date).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </span>
+                  <span className={day.workoutMin > 0 ? '' : 'text-muted-foreground'}>
+                    {day.workoutMin > 0 ? formatDuration(day.workoutMin) : 'No workout'}
+                  </span>
+                </Link>
               </td>
-              <td className="p-3 text-right">{formatDuration(day.workoutMin)}</td>
             </tr>
           ))}
         </tbody>
